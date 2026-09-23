@@ -52,6 +52,22 @@ describe("shake", () => {
       expect(String(frame.transform)).toStartWith("translate3d");
     }
   });
+
+  test("prefers-reduced-motion açıkken titreme oynamaz, ses ve titreşim çalışır", () => {
+    const { element, calls } = fakeElement();
+    // @ts-expect-error: test ortamında sahte window
+    globalThis.window = { matchMedia: () => ({ matches: true }) };
+    shake(element, "hard");
+    expect(calls).toHaveLength(0);
+
+    // @ts-expect-error: sahte matchMedia, MediaQueryList'in tamamı gerekmiyor
+    globalThis.window = { matchMedia: () => ({ matches: false }) };
+    shake(element);
+    expect(calls).toHaveLength(1);
+
+    expect(() => feedbackSound("click")).not.toThrow();
+    expect(() => haptic()).not.toThrow();
+  });
 });
 
 describe("ses ve titreşim", () => {

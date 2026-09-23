@@ -115,12 +115,21 @@ const SHAKES: Record<ShakeKind, { duration: number; frames: Keyframe[] }> = {
 const running = new WeakMap<Element, Animation>();
 
 /**
+ * `prefers-reduced-motion: reduce` ayarındaki kullanıcı sesi ve titreşimi alır, titremeyi almaz.
+ * Kontrol burada, çünkü CSS medya sorgusu Web Animations API'sini kapsamaz.
+ */
+function motionAllowed(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
+  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
  * Hedefi titretir. Yalnızca `translate` kullanır (döndürme yok) ki mobil viewport kaymasın;
  * Web Animations API'siyle çalışır, yani stil dosyası ya da sınıf ekle/çıkar yarışı yok.
  * İkinci çağrı, aynı elemanda süren titremeyi iptal eder.
  */
 export function shake(target: Element | null | undefined, kind: ShakeKind = "soft"): void {
-  if (!target || typeof target.animate !== "function") return;
+  if (!target || typeof target.animate !== "function" || !motionAllowed()) return;
   const { frames, duration } = SHAKES[kind];
   running.get(target)?.cancel();
   const animation = target.animate(frames, {

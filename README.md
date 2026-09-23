@@ -148,6 +148,9 @@ kısa titreme. Tur bitince bitiş fanfarı çalar ve tüm sayfa titrer (`[data-f
   hiçbir şey yapmaz, asla hata vermez (iOS Safari titreşimi yok sayar; ses ve titreme çalışır).
 - Titreme Web Animations API'siyle, yalnızca `translate` ile (döndürme yok → mobilde viewport kaymaz);
   üst üste basışta önceki titreme iptal edilir, sınıf ekle/çıkar yarışı yok.
+- `prefers-reduced-motion: reduce` ayarına uyulur: titreme oynamaz, **ses ve titreşim çalışır**. Kontrol
+  `feedback.ts` içindedir çünkü CSS medya sorgusu Web Animations API'sini kapsamaz (`styles.css`'teki
+  blok yalnız CSS animasyonlarını kapatır).
 - **Kanonik, yeniden kullanılabilir sürüm `ay-ui-library` deposunda**: `PressFeedback` bloğu
   (`usePressFeedback()` + `feedbackSound()`, `haptic()`, `shake()`). Burada aynı motorun kopyası duruyor,
   çünkü dil uygulaması bağımlılıksız ve çevrimdışı kalmalı ve GitHub Actions derlemesi kardeş depoya
