@@ -111,6 +111,7 @@ export default function App() {
   const sync = useSyncState();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [newItems, setNewItems] = useState<string[]>([]);
+  const [deckQuery, setDeckQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const sourcesDialog = useRef<HTMLDialogElement>(null);
   const newItemsDialog = useRef<HTMLDialogElement>(null);
@@ -123,6 +124,21 @@ export default function App() {
   // Fiil kimliği de `v:` önekli (SRS anahtarı `v:<id>:<form>`) — öneksiz hâlde `describe()`
   // fiili çözemiyor ve popup satırı boş kalıyordu.
   const allIds = useMemo(() => DECK_GROUPS.flatMap((g) => g.ids), []);
+
+  // Deste listesi araması: NL + TR metni üzerinde basit içerik araması (harf duyarsız).
+  // 335 kayıt için her tuşta yeniden süzmek ucuz; indeks gerekirse `describe` yerine Map'e geçilir.
+  const deckGroups = useMemo(() => {
+    const q = deckQuery.trim().toLocaleLowerCase();
+    if (!q) return DECK_GROUPS.map((g) => ({ ...g, ids: g.ids, hepsi: g.ids.length }));
+    return DECK_GROUPS.map((g) => {
+      const ids = g.ids.filter((id) => {
+        const info = describe(id);
+        return info ? `${info.nl} ${info.tr}`.toLocaleLowerCase().includes(q) : false;
+      });
+      return { ...g, ids, hepsi: g.ids.length };
+    });
+  }, [deckQuery]);
+  const deckHits = deckGroups.reduce((n, g) => n + g.ids.length, 0);
 
   // Eşitleme/açılışta deste büyümüşse (yeni ders notları içe aktarıldı) haber ver: bir kez.
   useEffect(() => {
@@ -352,18 +368,29 @@ export default function App() {
             <dialog
               ref={deckDialog}
               data-testid="deck"
+              onClose={() => setDeckQuery("")}
               className="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
             >
               <h2 className="font-display text-lg font-semibold">📚 {total} kayıt</h2>
               <p className="mt-1 text-xs text-inksoft">
-                Ders notlarından üretilen destenin tamamı. Kelimeler sözlük sırası, fiiller çekim
-                dizisi (inf · vt · vt_mv · voltooid) ile listelenir.
+                Ders notlarından üretilen destenin tamamı. Kelimeler alfabetik, fiiller çekim dizisi
+                (inf · vt · vt_mv · voltooid) ile listelenir; arama hem Hollandaca hem Türkçe
+                metinde çalışır.
               </p>
+              <input
+                type="search"
+                data-testid="deck-search"
+                value={deckQuery}
+                onChange={(e) => setDeckQuery(e.target.value)}
+                placeholder="Ara: Hollandaca ya da Türkçe (örn. twijfel, şüphe)"
+                className="mt-3 w-full rounded-cozy border border-surface2 bg-sand px-3 py-2 text-sm"
+              />
               <ul className="mt-3 flex max-h-[55vh] flex-col gap-3 overflow-y-auto text-sm">
-                {DECK_GROUPS.map((g) => (
+                {deckGroups.map((g) => (
                   <li key={g.ad} data-testid={`deck-group-${g.ad.toLowerCase()}`}>
                     <h3 className="sticky top-0 bg-surface text-xs font-semibold text-inksoft">
                       {g.icon} {g.ad} · {g.ids.length}
+                      {g.ids.length !== g.hepsi ? ` / ${g.hepsi}` : ""}
                     </h3>
                     <ul className="mt-1 flex flex-col gap-1">
                       {g.ids.map((id) => (
@@ -373,6 +400,11 @@ export default function App() {
                   </li>
                 ))}
               </ul>
+              {deckHits === 0 ? (
+                <p className="mt-2 text-xs text-inksoft" data-testid="deck-empty">
+                  Aramayla eşleşen kayıt yok.
+                </p>
+              ) : null}
               <div className="mt-4 flex justify-end">
                 <BigButton onClick={() => deckDialog.current?.close()}>Kapat</BigButton>
               </div>
