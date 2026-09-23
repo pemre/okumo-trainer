@@ -1,0 +1,99 @@
+/* okumo.dev'in paleti ve sıcak "cozy" dili: krem zemin, terracotta aksan, indigo ikincil. */
+@import "tailwindcss";
+
+@theme {
+  --color-sand: #f6ead2;
+  --color-surface: #fdf6e7;
+  --color-surface2: #f4e5cb;
+  --color-ink: #251e18;
+  --color-inksoft: #6e5b45;
+  --color-accent: #c14a1d;
+  --color-accentsoft: #f2d8c4;
+  --color-indigosoft: #e4ebf3;
+  --color-indigomid: #41608c;
+  --color-indigo: #2f4a70;
+  --color-indigodeep: #24395a;
+  --color-amber: #e8a13c;
+  --color-ambertext: #b07414;
+  --color-locked: #d9c6a4;
+  --color-danger: #8f3116;
+  --color-good: #2f7d4f;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-cozy: 1.25rem;
+  --shadow-cozy: 0 10px 30px -12px rgba(37, 30, 24, 0.35);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--color-sand);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-pop {
+  animation: pop 0.22s ease-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-28px);
+    opacity: 0;
+  }
+}
+.animate-rise {
+  animation: rise 0.9s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop,
+  .animate-shake,
+  .animate-rise {
+    animation: none;
+  }
+}

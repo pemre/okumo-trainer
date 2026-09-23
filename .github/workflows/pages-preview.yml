@@ -1,0 +1,148 @@
+name: GitHub Pages PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request
+        if: github.event.action != 'closed'
+        uses: actions/checkout@v4
+        with:
+          path: pr
+
+      - name: Checkout production source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          path: production
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build pull request preview
+        if: github.event.action != 'closed'
+        working-directory: pr
+        run: |
+          bun install
+          rm -f vite.config.d.ts
+          bun run build
+
+      - name: Build production root
+        working-directory: production
+        run: |
+          bun install
+          rm -f vite.config.d.ts
+          bun run build
+
+      - name: Restore existing previews
+        run: |
+          set -euo pipefail
+          rm -rf _site existing-pages
+          mkdir -p _site
+          cp -R production/dist/. _site/
+          touch _site/.nojekyll
+
+          git clone --depth 1 --branch gh-pages \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            existing-pages || true
+
+          if [ -d existing-pages/pull ]; then
+            mkdir -p _site/pull
+            cp -R existing-pages/pull/. _site/pull/
+          fi
+
+      - name: Add pull request preview
+        if: github.event.action != 'closed'
+        run: |
+          set -euo pipefail
+          mkdir -p "_site/pull/${{ github.event.pull_request.number }}"
+          rm -rf "_site/pull/${{ github.event.pull_request.number }}"/*
+          cp -R pr/dist/. "_site/pull/${{ github.event.pull_request.number }}/"
+
+      - name: Remove closed pull request preview
+        if: github.event.action == 'closed'
+        run: rm -rf "_site/pull/${{ github.event.pull_request.number }}"
+
+      - name: Save Pages storage branch
+        run: |
+          set -euo pipefail
+          cd _site
+          git init
+          git checkout -B gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: update Pages preview for PR #${{ github.event.pull_request.number }}"
+          git push --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Comment preview URL
+        if: github.event.action != 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const previewUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/pull/${prNumber}/`;
+            const marker = '<!-- pages-preview-url -->';
+            const body = `${marker}\n✅ PR preview deployed: ${previewUrl}`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const previous = comments.find((comment) =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Comment preview cleanup
+        if: github.event.action == 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '🧹 PR preview removed from GitHub Pages.',
+            });

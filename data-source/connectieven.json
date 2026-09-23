@@ -1,0 +1,92 @@
+[
+ {
+  "id": "enerzijds",
+  "nl": "enerzijds",
+  "en": "on the one hand",
+  "tr": "bir yandan (…anderzijds: öte yandan)",
+  "functie": "karşıtlık",
+  "zin": "Enerzijds wil ik meer werken, anderzijds wil ik meer vrije tijd.",
+  "zin_tr": "Bir yandan daha çok çalışmak istiyorum, öte yandan daha çok boş zaman istiyorum.",
+  "auto": true
+ },
+ {
+  "id": "anderzijds",
+  "nl": "anderzijds",
+  "en": "on the other hand",
+  "tr": "öte yandan, diğer taraftan",
+  "functie": "karşıtlık (enerzijds ile ikili)",
+  "zin": "Het is duur, maar anderzijds is het wel heel goed.",
+  "zin_tr": "Pahalı, ama öte yandan gerçekten çok iyi.",
+  "auto": true
+ },
+ {
+  "id": "daardoor",
+  "nl": "daardoor",
+  "en": "as a result, because of that",
+  "tr": "bu yüzden, bundan dolayı",
+  "functie": "sonuç (gevolg)",
+  "zin": "Het regende de hele dag, daardoor kwamen we te laat.",
+  "zin_tr": "Bütün gün yağmur yağdı, bu yüzden geç kaldık.",
+  "auto": true
+ },
+ {
+  "id": "daarentegen",
+  "nl": "daarentegen",
+  "en": "on the other hand, in contrast",
+  "tr": "buna karşılık, aksine",
+  "functie": "karşıtlık (tegenstelling)",
+  "zin": "Mijn broer houdt van voetbal, ik daarentegen geef niets om sport.",
+  "zin_tr": "Kardeşim futbolu sever; ben ise spora hiç önem vermem.",
+  "auto": true
+ },
+ {
+  "id": "bovendien",
+  "nl": "bovendien",
+  "en": "moreover, besides",
+  "tr": "üstelik, ayrıca",
+  "functie": "ekleme (toevoeging)",
+  "zin": "De trein was duur; bovendien was hij ook nog te laat.",
+  "zin_tr": "Tren pahalıydı; üstelik bir de gecikti.",
+  "auto": true
+ },
+ {
+  "id": "daarvoor",
+  "nl": "daarvoor",
+  "en": "for that (purpose); before that",
+  "tr": "onun için; ondan önce",
+  "functie": "amaç / zaman",
+  "zin": "Ik heb geen geld meer, daarvoor moet ik eerst sparen.",
+  "zin_tr": "Artık param kalmadı; bunun için önce para biriktirmem gerekiyor.",
+  "auto": true
+ },
+ {
+  "id": "met-andere-woorden",
+  "nl": "met andere woorden (m.a.w.)",
+  "en": "in other words",
+  "tr": "başka bir deyişle",
+  "functie": "açıklama",
+  "zin": "Hij is ontslagen, met andere woorden: hij zoekt nu werk.",
+  "zin_tr": "İşten çıkarıldı; başka bir deyişle şimdi iş arıyor.",
+  "auto": true
+ },
+ {
+  "id": "met-behulp-van",
+  "nl": "met behulp van (m.b.v.)",
+  "en": "with the help of, using",
+  "tr": "yardımıyla, kullanarak",
+  "functie": "araç (middel)",
+  "zin": "Ik leer Nederlands met behulp van deze app.",
+  "zin_tr": "Hollandacayı bu uygulamanın yardımıyla öğreniyorum.",
+  "auto": true
+ },
+ {
+  "id": "na-verloop-van-tijd",
+  "nl": "na verloop van tijd",
+  "en": "after some time, eventually",
+  "tr": "zamanla, bir süre sonra",
+  "functie": "zaman",
+  "zin": "Na verloop van tijd werd het werkritme makkelijker.",
+  "zin_tr": "Zamanla çalışma ritmi kolaylaştı.",
+  "auto": true
+ }
+]
