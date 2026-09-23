@@ -232,15 +232,20 @@ The home screen has two visuals, both fed by the `Progress.daily` series (day �
 The top bar is **always a single line**; even at 320 px the chips do not wrap (when they did, the bar
 grew to 81 px, now 49 px). The rule has three parts and lives in `src/components/ui.tsx`:
 
-- Title `min-w-0 truncate`: when space runs out the **title is clipped** first ("okumo-tra…"), chips
-  do not move.
+- Title `min-w-0 truncate`: space runs out → the **title is clipped** (or hidden on purpose, see
+  below) first; chips do not move. Crushed to a sliver (11 px on the game screen at 320 px) it read as
+  a glitch, so it is `display:none` where it cannot be readable: the **game screen below `sm`** (the
+  ← button plus the chips leave no room) and the **home screen below 360 px**.
 - Chips `shrink-0 whitespace-nowrap`: they never compress and their content never breaks into two lines.
+  The **🌐 chip drops its `TR+EN` label below `sm`** (~45 px back to the title); the icon still opens
+  the menu, and the panel shows the state in full.
 - Sizes from one place: the `TopBar` right cluster is `text-xs gap-1 px-3` (mobile) →
   `sm:text-sm sm:gap-2`, and `Pill` **never** sets its own font size (it would override the cluster).
 
 Verified by `okumo_mobile_check.py` — measures 320/375/414/768 px × (home screen + game screen); the
-page must not scroll sideways, chips stay on one line inside the screen, and the title stays ≥60 px
-visible.
+page must not scroll sideways, chips stay on one line inside the screen, and the title must be
+readable (≥60 px, never clipped) **or deliberately hidden** (`display:none`). The check only counts
+chips the user can see: the closed language menu keeps its rows in the layout, clipped.
 
 ---
 
