@@ -77,7 +77,7 @@ function commit(next: Progress, fromSync = false) {
   try {
     localStorage.setItem(KEY, JSON.stringify(cache));
   } catch {
-    /* kota dolu olsa da oyun devam etsin */
+    /* even when the quota is full, the game goes on */
   }
   for (const l of listeners) l();
   if (!fromSync) schedulePush();

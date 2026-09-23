@@ -24,7 +24,7 @@ describe("question generation", () => {
   for (const mode of MODES) {
     const questions = buildQuestions(mode, SIZE, {}, IKISI);
 
-    test(`${mode}: tur dolu ve kimlikler benzersiz`, () => {
+    test(`${mode}: the round is full and the ids are unique`, () => {
       expect(questions.length).toBeGreaterThan(0);
       expect(questions.length).toBeLessThanOrEqual(SIZE);
       expect(new Set(questions.map((q) => q.id)).size).toBe(questions.length);

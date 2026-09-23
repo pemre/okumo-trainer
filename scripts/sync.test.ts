@@ -28,7 +28,7 @@ describe("mergeProgress", () => {
     expect(merged.cards.appel.interval).toBe(9);
     expect(mergeProgress(remote, local).cards.appel.interval).toBe(9); // order-independent
   });
-  test("tek tarafta olan kartlar korunur", () => {
+  test("cards that exist on one side only are kept", () => {
     const local = base({ cards: { a: card(1) } });
     const remote = base({ cards: { b: card(2) } });
     expect(Object.keys(mergeProgress(local, remote).cards).sort()).toEqual(["a", "b"]);

@@ -27,7 +27,7 @@ describe("translation layer", () => {
     expect(translate(["en"], "Bu metin henüz çevrilmedi")).toBe("Bu metin henüz çevrilmedi");
   });
 
-  test("yer tutucular doldurulur", () => {
+  test("placeholders are filled in", () => {
     expect(translate(["tr"], "{n} kayıt", { n: 335 })).toBe("335 kayıt");
     expect(translate(["en"], "{n} kayıt", { n: 335 })).toBe("335 entries");
   });
