@@ -149,7 +149,7 @@ vault name is the folder name).
 | 🃏 **Matching** | Five Dutch cards on the left (word + example sentence below), five cards on the right (priority-language meaning, secondary meaning underneath). Tap to match; a wrong pair shakes red, matched pairs disappear. | `w.id` |
 | ✅ **Multiple choice** | Four-option questions in the priority language: NL→meaning and meaning→NL (options come from other records). | `w.id` |
 | ⌨️ **Typing** | The meaning (priority language) is given, you type the Dutch. `de/het`, punctuation, case and extra whitespace are tolerated. | `w.id` |
-| 🧩 **Sentence scramble** | A sentence translation is given; shuffled Dutch word chips must be put in order (example sentences with ≥4 words). | `w.id` |
+| 🧩 **Sentence scramble** | The sentence's **own translation** is given (`zin_tr`); shuffled Dutch word chips must be put in order (example sentences with ≥4 words). Cards without a sentence translation are skipped — the prompt must not fall back to the bare word meaning, that turned the task into a guess. | `w.id` |
 | 🔗 **Connectives** | Fill the gap in a sentence: half multiple choice, half typed. | `c:<slug>` |
 | 🔄 **Verb drilling** | Verb + requested form (past singular/plural, past participle) → you type the conjugation. The sound-pattern family is shown as a hint. | `v:<csv-row>:<form>` |
 
@@ -409,7 +409,8 @@ and ↑ are visible in the menu.
   only the texts and detail rows switch instantly.
 - **Known limits (data-driven; no invented translations):** `functie` (the connective function label)
   and sentence translations (`zin_tr`) only exist in Turkish → with TR off the connective hint is
-  hidden and sentence scramble falls back to the word meaning. Verb family names are the one
+  hidden and the scramble pool shrinks (22 of 111 cards have no `zin_tr`; scramble itself always
+  prints the Turkish sentence translation, the only translation the notes carry). Verb family names are the one
   exception: the 15 sound-pattern codes are translated via `FAMILIE_EN` (the Turkish family name has
   no English counterpart in the data).
 - **Adding a language** (e.g. German): `LANGS` + `LANG_ADI` + a dictionary + a `MONTHS` row; the menu
@@ -441,9 +442,14 @@ One general menu in the top bar (`⚙️`, `data-testid="settings-menu"`) holds 
 
 **Audio** (`src/lib/tts.ts`) — the **browser's own voice** (`speechSynthesis`, `lang = nl-NL`, rate
 0.9): no dependency, no audio files, works offline; on iOS/macOS the Dutch system voices are used.
+**Voice choice matters:** the system list offers Flemish `nl-BE` (Ellen) *before* Netherlands `nl-NL`
+(Xander), and Flemish rolls the R — so the code picks an exact `nl-NL` voice first and only falls back
+to any `nl`. (`getVoices()` is empty until the browser fires `voiceschanged`.)
 A speaker button (`<Speak>`, `data-testid="speak"`, inline SVG) sits next to Dutch text:
 - the question prompt — **only when the Dutch is already on screen** (meaning→Dutch questions carry no
   speaker: hearing it would give the answer away);
+- the sub-line under a Dutch word — in multiple choice that line **is** the Dutch example sentence
+  (`subNl`), while a meaning→Dutch question prints a meaning there and stays silent;
 - the feedback (`NL:` row and the Dutch example sentence);
 - the **deck** rows, the **matching** cards (Dutch side) and the **connectives** (the blanked sentence,
   the gap spoken as a pause, plus the Dutch answer options).
@@ -472,14 +478,14 @@ services too (`yap.ev`).
 ## 8) Tests and verification
 
 ```bash
-bun test               # 73 tests / 9 files
+bun test               # 75 tests / 9 files
 bun run lint           # biome check (CI runs the same step)
 bunx tsc --noEmit      # type check
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px top bar
 python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # sources popup + obsidian links
 python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # calendar opens at the far right (today)
 python3 ~/.hermes/cache/scratch/okumo_new_items_check.py              # new-records popup: quiet first load, 4 new words
-python3 ~/.hermes/cache/scratch/okumo_settings_tts_check.py          # ⚙️ menu: theme (OS default, explicit, persisted), Sv/Lv, speaker buttons
+python3 ~/.hermes/cache/scratch/okumo_settings_tts_check.py          # ⚙️ menu: theme (OS default, explicit, persisted), Sv/Lv, speaker buttons + the voice actually requested
 python3 ~/.hermes/cache/scratch/okumo_lang_menu_check.py              # language menu: priority order, persistence, game+deck, 375 px
 python3 ~/.hermes/cache/scratch/okumo_progress_check.py            # round bar: label = bar base, last question = 100%, connectives = 9
 python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py             # "N records" button → the whole deck (335 = 111+9+215)

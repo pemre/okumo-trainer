@@ -64,6 +64,27 @@ describe("question generation", () => {
     }
   });
 
+  // The prompt used to fall back to the bare word meaning (`zin_tr` empty on 22 of 111 cards), so the
+  // task read "şiddet" + shuffled words: nobody could tell which sentence to build.
+  test("scramble: the prompt is the sentence's own translation, cards without it are skipped", () => {
+    const ceviri = new Map(words.map((w) => [w.zin, w.zin_tr]));
+    const cevirisiz = new Set(words.filter((w) => w.zin_tr.trim() === "").map((w) => w.zin));
+    for (const q of buildQuestions("scramble", 40, {}, IKISI)) {
+      expect(q.prompt).toBe(ceviri.get(q.answer));
+      expect(q.prompt).not.toBe("");
+      expect(cevirisiz.has(q.answer)).toBe(false);
+    }
+  });
+
+  // Dutch→meaning prints the Dutch example sentence as the sub-line (reading it helps); meaning→Dutch
+  // prints a meaning instead, and the speaker only ever reads Dutch text that is already on screen.
+  test("choice: subNl marks the Dutch example sentence sub-line", () => {
+    for (const q of buildQuestions("choice", 40, {}, IKISI)) {
+      const kart = words.find((w) => w.id === q.id);
+      expect(q.subNl).toBe(q.promptSub === kart?.zin);
+    }
+  });
+
   test("verb drilling: the answer belongs to the requested form", () => {
     for (const q of buildQuestions("verbs", SIZE, {}, IKISI)) {
       expect(q.id.startsWith("v:")).toBe(true);

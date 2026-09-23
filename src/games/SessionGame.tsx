@@ -99,7 +99,13 @@ export default function SessionGame({
           {/* Only when the Dutch is already on screen — the speaker never gives the answer away. */}
           {q.speak ? <Speak text={q.speak} className="mt-1" /> : null}
         </div>
-        {q.promptSub ? <div className="mt-2 text-sm text-inksoft">{q.promptSub}</div> : null}
+        {q.promptSub ? (
+          <div className="mt-2 flex items-start gap-2" data-testid="prompt-sub">
+            <span className="text-sm text-inksoft">{q.promptSub}</span>
+            {/* The sub-line is the Dutch example sentence (not a meaning): reading it is the point. */}
+            {q.subNl ? <Speak text={q.promptSub} /> : null}
+          </div>
+        ) : null}
         {q.hint ? <div className="mt-3 text-xs text-inksoft">{q.hint}</div> : null}
       </div>
 

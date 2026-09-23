@@ -18,7 +18,12 @@ export function speak(text: string): void {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "nl-NL";
   u.rate = 0.9; // learner pace: a shade slower than the default
-  const nl = synth.getVoices().find((v) => v.lang.toLowerCase().startsWith("nl"));
+  // Prefer **Netherlands** Dutch: the system list puts Flemish (`nl-BE`, Ellen) first, and its
+  // rolled R reads harshly to a learner; `nl-NL` (Xander) is the model the lessons follow.
+  const sesler = synth.getVoices();
+  const nl =
+    sesler.find((v) => v.lang.replace("_", "-").toLowerCase() === "nl-nl") ??
+    sesler.find((v) => v.lang.toLowerCase().startsWith("nl"));
   if (nl) u.voice = nl; // no Dutch voice installed → let the browser pick by `lang`
   synth.speak(u);
 }

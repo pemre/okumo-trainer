@@ -18,6 +18,8 @@ export interface Question {
   speak?: string;
   /** The Dutch example sentence, when the card has one — the speaker button next to `Örnek:`. */
   zinNl?: string;
+  /** `promptSub` is the Dutch example sentence itself (not a meaning): the speaker may read it too. */
+  subNl?: boolean;
   /** The options themselves are Dutch (visible candidates): the speaker may read them out. */
   optionsNl?: boolean;
   detail: { nl: string; en: string; tr: string; zin?: string; zin_tr?: string };
@@ -69,11 +71,13 @@ function choiceQuestion(item: WordItem, direction: ChoiceDir, ls: Lang[]): Quest
   const ikincil = ls[1];
   const promptSub =
     direction.endsWith("-nl") && ikincil ? (ikincil === "tr" ? item.tr : item.en) : item.zin;
+  const subNl = promptSub === item.zin; // the Dutch sentence is on screen — and only then is it read
   return {
     id: item.id,
     kind: "choice",
     prompt,
     promptSub,
+    subNl,
     answer: item[key],
     options,
     speak: prompt === item.nl ? prompt : undefined, // meaning->Dutch: listening would reveal the answer
@@ -167,8 +171,9 @@ function scrambleQuestion(item: WordItem, ls: Lang[]): Question {
   return {
     id: item.id,
     kind: "scramble",
-    // The sentence translation exists only in Turkish (`zin_tr`): falls back to the word meaning when TR is off.
-    prompt: ls.includes("tr") ? item.zin_tr || item.tr : item.en || item.tr,
+    // Always the sentence's own translation (`zin_tr`): falling back to the bare word meaning turned
+    // the task into a guess ("şiddet" + shuffled words). Cards without it are skipped (see below).
+    prompt: item.zin_tr,
     promptSub: translate(ls, "Kelimeleri doğru sıraya koy"),
     hint: item.nl,
     answer: item.zin,
@@ -178,7 +183,10 @@ function scrambleQuestion(item: WordItem, ls: Lang[]): Question {
   };
 }
 
-const usableForScramble = (w: WordItem) => w.zin.split(/\s+/).length >= 4 && w.zin.length <= 70;
+// Scrambling needs the sentence **and** its translation: without `zin_tr` the prompt could only
+// repeat the word's meaning, which does not tell the learner which sentence to build.
+const usableForScramble = (w: WordItem) =>
+  w.zin.split(/\s+/).length >= 4 && w.zin.length <= 70 && w.zin_tr.trim() !== "";
 
 export function buildQuestions(
   mode: ModeId,
