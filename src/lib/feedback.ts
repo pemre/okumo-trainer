@@ -1,12 +1,12 @@
 /**
- * Bas geri bildirimi: ses + dokunsal titreşim + kısa titreme (yap.ev'deki tuş hissi).
+ * Press feedback: sound + haptic buzz + a short shake (the key feel from yap.ev).
  *
- * Kanonik, yeniden kullanılabilir sürümü ay-ui-library'deki `PressFeedback` bloğunda duruyor.
- * Buradaki kopya bilinçli: dil uygulaması bağımlılıksız ve çevrimdışı çalışmalı; GitHub Actions
- * derlemesi kardeş depoya (ay-ui-library) erişemez. Kütüphane npm'e yayımlanırsa bu dosya
- * `import { feedbackSound, haptic, shake } from "ay-ui-library"` satırına döner.
+ * The canonical, reusable version lives in the `PressFeedback` block of ay-ui-library.
+ * The copy here is deliberate: the language app must stay dependency-free and offline, and the
+ * GitHub Actions build cannot reach the sibling repo (ay-ui-library). If the library ships to npm,
+ * this file turns back into `import { feedbackSound, haptic, shake } from "ay-ui-library"`.
  *
- * Ses dosyası yok: tonlar Web Audio ile sentezlenir (çevrimdışı çalışır, paket şişmez).
+ * No audio files: tones are synthesised with Web Audio (works offline, no bundle weight).
  */
 
 export type FeedbackKind = "click" | "success" | "error" | "finish";
@@ -29,7 +29,7 @@ function audioContext(): AudioContext | null {
   return context;
 }
 
-/** Tek bir ton çalar; `glide` süre boyunca frekansı o kadar Hz kaydırır. */
+/** Plays a single tone; `glide` slides the frequency by that many Hz over the duration. */
 export function playTone(
   frequency: number,
   duration: number,
@@ -71,7 +71,7 @@ const RECIPES: Record<FeedbackKind, () => void> = {
   },
 };
 
-/** Bu ana ait tonu çalar (varsayılan: kısa tık). */
+/** Plays the tone for this moment (default: a short click). */
 export function feedbackSound(kind: FeedbackKind = "click"): void {
   RECIPES[kind]();
 }
@@ -81,7 +81,7 @@ export function haptic(pattern: number | number[] = [20, 30, 20]): void {
   try {
     navigator.vibrate?.(pattern);
   } catch {
-    // titreşim API'si yok — yapacak bir şey yok
+    // no vibration API — nothing to do
   }
 }
 
@@ -115,8 +115,8 @@ const SHAKES: Record<ShakeKind, { duration: number; frames: Keyframe[] }> = {
 const running = new WeakMap<Element, Animation>();
 
 /**
- * `prefers-reduced-motion: reduce` ayarındaki kullanıcı sesi ve titreşimi alır, titremeyi almaz.
- * Kontrol burada, çünkü CSS medya sorgusu Web Animations API'sini kapsamaz.
+ * A user with `prefers-reduced-motion: reduce` still gets sound and haptics, not the shake.
+ * The check lives here because a CSS media query cannot cover the Web Animations API.
  */
 function motionAllowed(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
@@ -124,9 +124,9 @@ function motionAllowed(): boolean {
 }
 
 /**
- * Hedefi titretir. Yalnızca `translate` kullanır (döndürme yok) ki mobil viewport kaymasın;
- * Web Animations API'siyle çalışır, yani stil dosyası ya da sınıf ekle/çıkar yarışı yok.
- * İkinci çağrı, aynı elemanda süren titremeyi iptal eder.
+ * Shakes the target. Uses `translate` only (no rotation) so the mobile viewport never shifts;
+ * runs on the Web Animations API, so there is no stylesheet or add/remove-class race.
+ * A second call cancels the shake still running on the same element.
  */
 export function shake(target: Element | null | undefined, kind: ShakeKind = "soft"): void {
   if (!target || typeof target.animate !== "function" || !motionAllowed()) return;

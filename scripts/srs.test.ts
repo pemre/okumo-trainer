@@ -10,8 +10,8 @@ import {
 } from "../src/lib/srs.ts";
 import type { CardState } from "../src/lib/types.ts";
 
-describe("aralıklı tekrar", () => {
-  test("doğru cevap aralığı büyütür, yanlış cevap sıfırlar", () => {
+describe("spaced repetition", () => {
+  test("a correct answer grows the interval, a wrong one resets it", () => {
     let card = emptyCard("2026-09-23");
     card = review(card, 2, new Date("2026-09-23T10:00:00"));
     expect(card.reps).toBe(1);
@@ -33,7 +33,7 @@ describe("aralıklı tekrar", () => {
     expect(lapsed.ease).toBeLessThan(card.ease);
   });
 
-  test("kolay cevap zoru geçer, ease tabanı 1.3'ün altına inmez", () => {
+  test("easy beats hard and ease never drops below the 1.3 floor", () => {
     let hard = emptyCard("2026-09-23");
     let easy = emptyCard("2026-09-23");
     for (let i = 0; i < 3; i++) {
@@ -46,10 +46,10 @@ describe("aralıklı tekrar", () => {
   });
 });
 
-describe("oturum seçimi", () => {
+describe("session selection", () => {
   const items = Array.from({ length: 20 }, (_, i) => ({ id: `i${i}` }));
 
-  test("vadesi gelenler öne alınır, istenen sayıda ve tekrarsız döner", () => {
+  test("due cards come first, the session returns the requested size without repeats", () => {
     const cards: Record<string, CardState> = {
       i5: { ...emptyCard("2026-09-20"), reps: 3, due: "2026-09-21", lapses: 2 },
       i6: { ...emptyCard("2026-09-20"), reps: 1, due: "2026-09-22", lapses: 0 },
@@ -63,14 +63,14 @@ describe("oturum seçimi", () => {
     expect(picked.some((p) => p.id === "i7")).toBe(false);
   });
 
-  test("havuz küçükse eldeki kadar döner", () => {
+  test("returns as many as the pool holds when the pool is small", () => {
     const picked = pickSession(items.slice(0, 2), {}, 10, new Date("2026-09-23T09:00:00"));
     expect(picked.length).toBe(2);
   });
 });
 
-describe("yazma cevabı denetimi", () => {
-  test("büyük/küçük harf, noktalama ve de/het hoşgörülür", () => {
+describe("typed-answer checking", () => {
+  test("case, punctuation and de/het are tolerated", () => {
     expect(checkTyped("  Bereiken. ", "bereiken")).toBe(true);
     expect(checkTyped("het aanbod", "aanbod")).toBe(true);
     expect(checkTyped("aanbod", "het aanbod")).toBe(true);
@@ -81,8 +81,8 @@ describe("yazma cevabı denetimi", () => {
   });
 });
 
-describe("çoktan seçmeli şıklar", () => {
-  test("doğru cevap şıkların içinde, şıklar benzersiz", () => {
+describe("multiple-choice options", () => {
+  test("the right answer is among the options, options are unique", () => {
     const pool = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }];
     const opts = buildOptions(
       pool[0],

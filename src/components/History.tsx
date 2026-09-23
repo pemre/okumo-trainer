@@ -1,5 +1,5 @@
-// Ana sayfadaki geçmiş görselleri: günlük XP grafiği (recharts) + tekrar takvimi
-// (react-activity-calendar). İkisi de aynı `daily` serisinden beslenir (bkz. src/lib/history.ts).
+// History visuals on the home screen: daily XP chart (recharts) + review calendar
+// (react-activity-calendar). Both read the same `daily` series (see src/lib/history.ts).
 import { ActivityCalendar } from "react-activity-calendar";
 import {
   Bar,
@@ -15,16 +15,16 @@ import {
 import { CHART_DAYS, calendarRows, dailySeries, movingAverage } from "../lib/history";
 import { useT } from "../lib/i18n";
 
-// okumo.dev paleti: krem zemin, terracotta aksan. Seviye 0 boş gün.
+// okumo.dev palette: cream background, terracotta accent. Level 0 = no activity.
 const LEVEL_FILL = ["#e7dcc4", "#e6b795", "#d98a5f", "#c14a1d", "#8f3113"];
 const AXIS = "#e3d6bd";
 const INK = "#8a7a63";
 
-// react-activity-calendar v3: tema zorunlu (varsayılan gri) ve tam iki renk verilir,
-// aradaki seviyeleri kütüphane açar. Okumo krem zemin kullandığı için iki şemada da açık renk.
+// react-activity-calendar v3 requires a theme (grey by default) and takes exactly two colors;
+// the library derives the levels in between. Okumo has a cream background, so both schemes stay light.
 const CALENDAR_THEME = { light: ["#eee3cb", "#c14a1d"], dark: ["#eee3cb", "#c14a1d"] };
 
-// Ay etiketleri dar alan (3 harf): iki dilli yazılamaz → açık dillerin ilki kullanılır.
+// Month labels are 3-char slots: no room for two languages → the first enabled language wins.
 const MONTHS: Record<string, string[]> = {
   tr: ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"],
   en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -99,11 +99,11 @@ export function ActivityHeat({ daily }: { daily: Record<string, number> }) {
         {t("Her kare bir gün; koyulaştıkça o gün daha çok XP.")}
       </p>
       <div className="mt-3 overflow-x-auto">
-        {/* Kütüphane kaydırmayı kendi iç kapsayıcısında yapar
-            (`.react-activity-calendar__scroll-container`), dışarıdaki sarmalayıcı taşmaz.
-            52 hafta kutuya sığmadığı için varsayılan konum en sağ (bugün) olsun; `ref` çocuklar
-            bağlandıktan sonra çalıştığı için iç kapsayıcı hazırdır. Genişlik veriden bağımsız
-            sabit olduğundan bir kez yeter, ilerleme sonradan yüklense de konum kaymaz. */}
+        {/* The library scrolls inside its own container
+            (`.react-activity-calendar__scroll-container`), so the outer wrapper never overflows.
+            52 weeks do not fit, so scroll to the far right (today) by default; `ref` runs after the
+            children are attached, so the inner container is ready. The width is data-independent,
+            so one pass is enough: a later progress load will not move it. */}
         <ActivityCalendar
           ref={(el) => {
             const kaydirici = el?.querySelector<HTMLElement>(

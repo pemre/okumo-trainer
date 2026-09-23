@@ -1,7 +1,7 @@
-// Klas notlarını (Obsidian markdown) + fiil listesini uygulamanın okuduğu JSON'a çevirir.
-// Kullanım: bun scripts/import-notes.mjs
-// Notlar tek doğruluk kaynağıdır: eksik/hatalı alan varsa düzeltme NOTA yazılır (eski
-// data-source/overrides.json mekanizması 2026-09-23'te kaldırıldı).
+// Turns the class notes (Obsidian markdown) + the verb list into the JSON the app reads.
+// Usage: bun scripts/import-notes.mjs
+// The notes are the single source of truth: fix a missing/wrong field IN THE NOTE (the old
+// data-source/overrides.json mechanism was removed on 2026-09-23).
 
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -10,7 +10,7 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dir, "..");
 const NOTES_DIR =
   process.env.OKUMO_NOTES_DIR || "/Users/user/Desktop/emre/4. Belgelik/Hollandaca dil kursu";
-// Obsidian kasası: notları uygulamadan obsidian:// bağlantısıyla açabilmek için (vault adı = klasör adı).
+// Obsidian vault: lets the app open a note via an obsidian:// link (vault name = folder name).
 const VAULT_DIR = process.env.OKUMO_VAULT_DIR || "/Users/user/Desktop/emre";
 const SOURCE_DIR = path.join(ROOT, "data-source");
 const OUT_DIR = path.join(ROOT, "src", "data");
@@ -31,8 +31,8 @@ const clean = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
-// "komend (komınd)" → "komend": tek sözcüklü parantez okunuş/ipucu sayılır ve atılır.
-// Nokta, virgül ya da boşluk içeren parantez açıklamadır, korunur
+// "komend (komınd)" → "komend": a single-word parenthesis (above) is a pronunciation hint, dropped.
+// A parenthesis containing a dot, comma or space is an explanation and is kept
 // ("m.a.w.", "to spend (money, time)", "to get, to pass (an exam)").
 const stripParen = (s) =>
   s
@@ -40,7 +40,7 @@ const stripParen = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** Kasaya göreli yolu obsidian:// bağlantısına çevirir; kasa dışındaysa null. */
+/** Turns a vault-relative path into an obsidian:// link; null when outside the vault. */
 function obsidianLink(file) {
   const rel = path.relative(VAULT_DIR, path.join(NOTES_DIR, file));
   if (!rel || rel.startsWith("..")) return null;
@@ -60,7 +60,7 @@ const isSeparator = (line) => /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(line) && line.in
 const splitSentenceCell = (cell) => {
   let m = cell.split(/\s+[—–]\s+/);
   if (m.length < 2) {
-    // "NL cümle - TR çeviri": yalnızca tire sonrası Türkçe'ye özgü harf varsa böl
+    // "NL sentence - TR translation": only split when the part after the dash holds Turkish letters
     const parts = cell.split(/\s+-\s+/);
     if (/[çğıöşü]/i.test(parts.slice(1).join(" - "))) m = parts;
   }
@@ -94,9 +94,9 @@ function tableRowToItem(row, map) {
   }
   if (!item.tr && !item.zin && row.length > map.nl + 2) {
     const last = row[row.length - 1];
-    if (last && !last.includes(" ") && last !== nl) item.synoniem = last; // ör. "uit elkaar halen … losmaken"
+    if (last && !last.includes(" ") && last !== nl) item.synoniem = last; // e.g. "uit elkaar halen … losmaken"
   }
-  // Tek kelimelik hücre cümle değildir (eşanlamlı ya da çeviri olabilir)
+  // A single-word cell is not a sentence (it may be a synonym or a translation)
   if (item.zin && !item.zin.includes(" ")) {
     if (TURKISH_HINT.test(item.zin)) item.tr ||= item.zin;
     else item.synoniem ||= item.zin;
@@ -111,16 +111,20 @@ const NL_LIKE =
 function parseBullet(bodyRaw, out, rapor = null, satir = 0) {
   const body = clean(bodyRaw);
   if (body.includes("(")) {
-    rapor?.push({ satir, sebep: "parantezli madde (dipnot sayılır)", metin: body });
+    rapor?.push({ satir, sebep: "parenthesised bullet (treated as a footnote)", metin: body });
     return;
   }
   const parts = body
     .split(/\s+[—–]\s+|\s+-\s+/)
     .map((p) => p.trim())
     .filter(Boolean);
-  // Tek parça = düz liste maddesi, kayda dönüşmesi beklenmez; 4+ parça sessizce düşerdi.
+  // One part = a plain bullet, never expected to become a record; 4+ parts used to vanish silently.
   if (parts.length > 3) {
-    rapor?.push({ satir, sebep: `${parts.length} parçalı madde (en çok 3 okunur)`, metin: body });
+    rapor?.push({
+      satir,
+      sebep: `bullet with ${parts.length} parts (at most 3 are read)`,
+      metin: body,
+    });
     return;
   }
   if (parts.length < 2) return;
@@ -139,7 +143,7 @@ function parseBullet(bodyRaw, out, rapor = null, satir = 0) {
   }
   if (quoted) item.zin = nl;
   if (!nl || norm(nl).length < 2) {
-    rapor?.push({ satir, sebep: "Hollandaca boş/kısa", metin: body });
+    rapor?.push({ satir, sebep: "Dutch empty/too short", metin: body });
     return;
   }
   out.push(item);
@@ -174,7 +178,7 @@ export function parseMarkdown(text) {
           const item = tableRowToItem(cells(raw), map);
           if (item && item.nl && !/^#+$/.test(item.nl)) items.push(item);
           else if (cells(raw).filter(Boolean).length >= 2 && /[A-Za-zÀ-ÿ]/.test(raw))
-            atlanan.push({ satir: i + k + 1, sebep: "tablo satırı okunamadı", metin: raw.trim() });
+            atlanan.push({ satir: i + k + 1, sebep: "unreadable table row", metin: raw.trim() });
         }
       }
       continue;
@@ -310,12 +314,12 @@ async function main() {
 
   const eksik = items.filter((i) => i.eksik.length);
   console.log(`kaynak       : ${sources.map((s) => `${s.file}=${s.items}`).join(", ")}`);
-  console.log(`kelime/ifade : ${items.length}  (eksik alanlı: ${eksik.length})`);
-  console.log(`bağlaç       : ${connectieven.length}   fiil: ${werkwoorden.length}`);
+  console.log(`words/phrases : ${items.length}  (missing fields: ${eksik.length})`);
+  console.log(`connectives   : ${connectieven.length}   verbs: ${werkwoorden.length}`);
   if (eksik.length) console.log(eksik.map((e) => `${e.nl}[${e.eksik}]`).join(" | "));
-  // Notta duran ama uygulamaya girmeyen içerik: sessiz kaybı görünür kılar (bkz. README "Veri kuralları").
+  // Content that stays in the note but never reaches the app: makes silent loss visible (see README "Data rules").
   if (atlanan.length) {
-    console.log(`\natlanan içerik: ${atlanan.length} satır kayda dönüşmedi`);
+    console.log(`\nskipped content: ${atlanan.length} lines produced no record`);
     for (const a of atlanan)
       console.log(`  ${a.dosya.slice(0, 10)}:${a.satir}  ${a.sebep} → ${a.metin.slice(0, 70)}`);
   }

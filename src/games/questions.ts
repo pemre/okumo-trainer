@@ -4,7 +4,7 @@ import { buildOptions, pickSession, shuffle } from "../lib/srs";
 import type { CardState, Connective, ModeId, Verb, WordItem } from "../lib/types";
 
 export interface Question {
-  id: string; // SRS kart anahtarı
+  id: string; // SRS card key
   kind: "choice" | "type" | "scramble";
   prompt: string;
   promptSub?: string;
@@ -12,7 +12,7 @@ export interface Question {
   answer: string;
   alternatives?: string[];
   options?: string[];
-  words?: string[]; // scramble: karışık kelime çipleri
+  words?: string[]; // scramble: shuffled word chips
   detail: { nl: string; en: string; tr: string; zin?: string; zin_tr?: string };
 }
 
@@ -38,17 +38,18 @@ const wordDetail = (w: WordItem) => ({
   zin_tr: w.zin_tr,
 });
 
-/** Soru yönleri açık dillere göre: tek dil → o dille çift yönlü, iki dil → üç yön (bugünkü karışım). */
+/**
+ * Question directions follow the **priority language** (`ls[0]`). The secondary language never
+ * asks questions — it only shows up in meaning explanations. Priority TR → NL↔TR, EN → NL↔EN.
+ */
 type ChoiceDir = "nl-tr" | "nl-en" | "tr-nl" | "en-nl";
 
 function choiceDirs(ls: Lang[]): ChoiceDir[] {
-  if (ls.includes("tr") && ls.includes("en")) return ["nl-tr", "nl-en", "tr-nl"];
-  return ls.includes("tr") ? ["nl-tr", "tr-nl"] : ["nl-en", "en-nl"];
+  return ls[0] === "en" ? ["nl-en", "en-nl"] : ["nl-tr", "tr-nl"];
 }
 
 function typeDirs(ls: Lang[]): ("tr-nl" | "en-nl")[] {
-  if (ls.includes("tr") && ls.includes("en")) return ["tr-nl", "en-nl"];
-  return ls.includes("tr") ? ["tr-nl"] : ["en-nl"];
+  return ls[0] === "en" ? ["en-nl"] : ["tr-nl"];
 }
 
 function choiceQuestion(item: WordItem, direction: ChoiceDir, ls: Lang[]): Question {
@@ -56,8 +57,11 @@ function choiceQuestion(item: WordItem, direction: ChoiceDir, ls: Lang[]): Quest
     direction === "tr-nl" || direction === "en-nl" ? "nl" : direction === "nl-en" ? "en" : "tr";
   const options = buildOptions(item, words, (w) => w[key], Math.random, 4).map((w) => w[key]);
   const prompt = direction === "tr-nl" ? item.tr : direction === "en-nl" ? item.en : item.nl;
-  // Çeviriden Hollandacaya sorularda alt satır: öteki açık dilin anlamı, yoksa Hollandaca örnek cümle.
-  const promptSub = direction === "tr-nl" && ls.includes("en") ? item.en : item.zin;
+  // Meaning → Dutch: the sub-line is the **secondary** meaning if there is one, else the example sentence.
+  // Dutch → meaning keeps the example sentence — printing a meaning would give the answer away.
+  const ikincil = ls[1];
+  const promptSub =
+    direction.endsWith("-nl") && ikincil ? (ikincil === "tr" ? item.tr : item.en) : item.zin;
   return {
     id: item.id,
     kind: "choice",
@@ -96,7 +100,7 @@ function connectiveQuestion(connective: Connective, kind: "choice" | "type", ls:
     id: `c:${connective.id}`,
     kind,
     prompt: blanked,
-    // `functie` veride yalnız Türkçe: TR kapalıysa bu ipucu gösterilmez (uydurma çeviri yok).
+    // `functie` exists only in Turkish: hidden when TR is off (no invented translations).
     promptSub: ls.includes("tr")
       ? translate(ls, "İşlev: {f}", { f: connective.functie })
       : undefined,
@@ -128,7 +132,7 @@ function verbQuestion(verb: Verb, form: VerbForm, ls: Lang[]): Question {
     kind: "type",
     prompt: verb.inf,
     promptSub: labels[form],
-    // Aile adı veride yalnız Türkçe; EN için ses kalıbı kodu (15 aile) çevrilir.
+    // Family names exist only in Turkish; for EN the sound-pattern code (15 families) is translated.
     hint: aileAdi(ls, verb),
     answer,
     alternatives:
@@ -147,7 +151,7 @@ function scrambleQuestion(item: WordItem, ls: Lang[]): Question {
   return {
     id: item.id,
     kind: "scramble",
-    // Cümle çevirisi veride yalnız Türkçe (`zin_tr`): TR kapalıysa kelime anlamı gösterilir.
+    // The sentence translation exists only in Turkish (`zin_tr`): falls back to the word meaning when TR is off.
     prompt: ls.includes("tr") ? item.zin_tr || item.tr : item.en || item.tr,
     promptSub: translate(ls, "Kelimeleri doğru sıraya koy"),
     hint: item.nl,

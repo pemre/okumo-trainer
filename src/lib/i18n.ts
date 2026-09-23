@@ -1,24 +1,25 @@
 /**
- * Arayüz dilleri: TR + EN. react-intl yerine kendi minik katmanımız — uygulama bağımlılıksız
- * ve çevrimdışı çalışıyor, ICU/extraction zincirine gerek yok (çevrilen metin ~90 satır).
+ * Interface languages: TR + EN. A tiny layer of our own instead of react-intl — the app is
+ * dependency-free and offline, and the ICU/extraction chain is overkill for ~95 lines of text.
  *
- * Kural: **msgid = Türkçe özgün metin**. Sözlükte karşılığı yoksa Türkçe'ye düşer (asla boş
- * kalmaz), böylece yeni bir metin eklerken çeviri unutulsa da ekran bozulmaz.
+ * Rule: **msgid = the original Turkish text**. A missing dictionary entry falls back to Turkish
+ * (never a blank screen), so forgetting a translation cannot break the interface.
  *
- * İki dil açıkken metinler `TR · EN` biçiminde birleştirilir (uygulama 3 dilli: TR + EN →
- * Hollandaca). Tek değerli dar alanlar (takvim ay etiketleri) açık dillerin **ilki**ni kullanır.
+ * **Order = priority** (changed by dragging or ↑ in the menu): `langs[0]` is the priority language
+ * and shows **everywhere** (`translate`, month labels, question direction). The other languages
+ * only appear in meaning explanations, listed after the priority one (`ceviri`).
  */
 import { useCallback, useSyncExternalStore } from "react";
 
 export type Lang = "tr" | "en";
 
-/** Kanonik sıra: ilk dil "birincil" sayılır (dar alanlar onu kullanır). */
+/** Supported languages (the canonical set; **the order belongs to the user**, see `langs`). */
 export const LANGS: Lang[] = ["tr", "en"];
 
 /** Dil adları kendi dilinde: EN modunda da "Türkçe" yazar, geri dönüş yolu kaybolmaz. */
 export const LANG_ADI: Record<Lang, string> = { tr: "Türkçe", en: "English" };
 
-/** Fiil ailesi (ses kalıbı) kodu → İngilizce ad. Veride yalnız Türkçe adı var (`familie_adi`). */
+/** Verb family (sound-pattern) code → English name. The data only carries the Turkish name. */
 export const FAMILIE_EN: Record<string, string> = {
   UNIEK: "One-off verbs (doen, gaan, staan, slaan)",
   "K4_e-a-e_of_o": "e → a → e/o (spreken/nemen type)",
@@ -39,11 +40,13 @@ export const FAMILIE_EN: Record<string, string> = {
 };
 
 const EN: Record<string, string> = {
-  // --- üst bar / menü ---
+  // --- top bar / menu ---
   "Ana sayfa": "Home",
   "Arayüz dilleri": "Interface languages",
-  "En az bir dil açık kalır; çeviriler açık dillere göre gösterilir.":
-    "At least one language stays on; translations follow the enabled languages.",
+  "Öncelikli dil her yerde, diğeri yalnız anlam açıklamalarında görünür. En az bir dil açık kalır.":
+    "The priority language shows everywhere; the other only in meaning descriptions. At least one language stays on.",
+  "Öncelikli yap": "Make priority",
+  Sırala: "Reorder",
   "Seri (üst üste oynanan gün)": "Streak (consecutive days played)",
   "Toplam XP": "Total XP",
   "İlerleme yerel sunucuyla eşitlendi": "Progress synced with the local server",
@@ -106,7 +109,7 @@ const EN: Record<string, string> = {
   Kelimeler: "Words",
   Fiiller: "Verbs",
 
-  // --- tur özeti ---
+  // --- round summary ---
   "{a}/{b} doğru": "{a}/{b} correct",
   "+{xp} XP · 🔥 {seri} gün seri · toplam {toplam} XP":
     "+{xp} XP · 🔥 {seri}-day streak · {toplam} XP total",
@@ -152,11 +155,12 @@ function load(): Lang[] {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (Array.isArray(raw)) {
-      const ok = LANGS.filter((l) => raw.includes(l));
+      // The stored order is kept (order = priority); unknown/duplicate entries are dropped.
+      const ok = [...new Set(raw)].filter((l) => LANGS.includes(l));
       if (ok.length) return ok;
     }
   } catch {
-    /* bozuk kayıt ya da localStorage yok: varsayılana düş */
+    /* corrupt record or no localStorage: fall back to the default */
   }
   return LANGS; // varsayılan: ikisi de açık (uygulamanın bugünkü 3 dilli hâli)
 }
@@ -168,21 +172,34 @@ export function getLangs(): Lang[] {
   return langs;
 }
 
-/** En az bir dil açık kalır: son dili kapatma denemesi sessizce yok sayılır. */
+/** At least one language stays on: turning off the last one is silently ignored. */
 export function setLangs(next: Lang[]): void {
-  const ok = LANGS.filter((l) => next.includes(l));
+  // The order is **preserved** (the order of `next` is the priority order); unknown and duplicate entries are dropped.
+  const ok = [...new Set(next)].filter((l) => LANGS.includes(l));
   if (!ok.length || ok.join() === langs.join()) return;
   langs = ok;
   try {
     localStorage.setItem(KEY, JSON.stringify(langs));
   } catch {
-    /* kota dolu: seçim bu oturumda geçerli */
+    /* quota full: the choice stands for this session */
   }
   for (const l of listeners) l();
 }
 
 export function toggleLang(l: Lang): void {
+  // A newly enabled language is **appended**: the current priority is untouched, it joins as secondary.
   setLangs(langs.includes(l) ? langs.filter((x) => x !== l) : [...langs, l]);
+}
+
+/**
+ * Priority reorder: moves `kaynak` (source) to `hedef`'s (target) position (`langs[0]` = priority).
+ * Both the drag in the menu and the ↑ button go through this single path.
+ */
+export function dilTasi(kaynak: Lang, hedef: Lang): void {
+  if (kaynak === hedef || !langs.includes(kaynak) || !langs.includes(hedef)) return;
+  const yeni = langs.filter((l) => l !== kaynak);
+  yeni.splice(langs.indexOf(hedef), 0, kaynak);
+  setLangs(yeni);
 }
 
 export function subscribe(listener: () => void): () => void {
@@ -190,7 +207,7 @@ export function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** `{ad}` yer tutucularını doldurur (çeviri cümleyi bütün tutabilsin diye). */
+/** Fills `{name}` placeholders (so a dictionary entry can hold the whole sentence). */
 export function doldur(metin: string, params?: Record<string, string | number>): string {
   if (!params) return metin;
   return metin.replace(/\{(\w+)\}/g, (tam, ad: string) =>
@@ -198,19 +215,23 @@ export function doldur(metin: string, params?: Record<string, string | number>):
   );
 }
 
-/** Tek dil → o dilin metni; iki dil → `TR · EN`. Sözlükte yoksa Türkçe'ye düşer. */
+/**
+ * Interface text: **priority language only** (`ls[0]`). Other enabled languages never show up in
+ * interface strings — they are listed in meaning explanations (`ceviri`). Missing entry → Turkish.
+ */
 export function translate(
   ls: Lang[],
   metin: string,
   params?: Record<string, string | number>,
 ): string {
-  return doldur(ls.map((l) => (l === "tr" ? metin : (EN[metin] ?? metin))).join(" · "), params);
+  const l = ls[0] ?? "tr";
+  return doldur(l === "tr" ? metin : (EN[metin] ?? metin), params);
 }
 
 /**
- * Veri çevirisi: açık dillere göre `tr`/`en` alanlarını birleştirir.
- * Açık dilde alan yoksa (örn. cümle çevirisinde yalnız `zin_tr` varsa) elde olan gösterilir —
- * uydurma yok, boş satır da yok.
+ * Data translation (meaning explanation): joins languages **in priority order** → the priority
+ * meaning first, then the others. When an enabled language has no field (e.g. only `zin_tr`
+ * exists for a sentence) it shows what is there — no invented text, no empty row.
  */
 export function ceviri(ls: Lang[], x: { tr?: string; en?: string } | undefined | null): string {
   if (!x) return "";
@@ -219,12 +240,12 @@ export function ceviri(ls: Lang[], x: { tr?: string; en?: string } | undefined |
   return x.tr || x.en || "";
 }
 
-/** Fiil ailesi adı: açık dillerde Türkçe ad + (varsa) İngilizce karşılık. */
+/** Verb family name: the Turkish name plus (when available) the English counterpart. */
 export function aileAdi(ls: Lang[], v: { familie: string; familie_adi: string }): string {
   return ceviri(ls, { tr: v.familie_adi, en: FAMILIE_EN[v.familie] });
 }
 
-/** Bileşenler için bağlı çeviri yardımcıları. Dil değişince abone olan bileşen yeniden çizilir. */
+/** Hooked translation helpers for components. A language change re-renders subscribers. */
 export function useT() {
   const ls = useSyncExternalStore(subscribe, getLangs, getLangs);
   const t = useCallback(

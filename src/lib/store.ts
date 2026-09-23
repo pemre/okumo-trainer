@@ -1,12 +1,12 @@
-// İlerleme: yerelde her zaman çalışır (localStorage), yerel sunucu varsa onunla eşitlenir.
-// Sunucu/internet yoksa oyun aynen devam eder; bağlantı gelince iki taraf birleştirilir.
+// Progress: always works locally (localStorage) and syncs with the local server when there is one.
+// Without server/internet the game continues unchanged; when it returns, both sides merge.
 import { useSyncExternalStore } from "react";
 import { dayKey, emptyCard, review } from "./srs";
 import { MAX_PROGRESS_BYTES, mergeProgress, newDeckIds, normalizeProgress } from "./sync";
 import type { CardState, Grade, Progress } from "./types";
 
 const KEY = "okumo-trainer/v1";
-// Göreli yol: statik yayında (GitHub Pages) bu uç yoktur → sessizce yerel moda düşer.
+// Relative path: the static site (GitHub Pages) has no such endpoint → falls back to local silently.
 const API = "api/progress";
 const PUSH_DEBOUNCE = 1500;
 
@@ -94,14 +94,14 @@ async function push(progress: Progress): Promise<void> {
   await fetch(API, { method: "PUT", headers: { "content-type": "application/json" }, body });
 }
 
-/** Sunucuyla iki yönlü eşitleme: çek → birleştir → gerekiyorsa geri yaz. */
+/** Two-way sync with the server: fetch → merge → write back when needed. */
 export async function syncNow(): Promise<SyncState> {
   try {
     const res = await fetch(API, { headers: { accept: "application/json" } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const remote = normalizeProgress(await res.json());
     if (!remote) {
-      await push(getProgress()); // sunucuda kayıt yok: yereli gönder
+      await push(getProgress()); // nothing stored on the server: send the local copy
       setSyncState("synced");
       return syncState;
     }
@@ -110,12 +110,12 @@ export async function syncNow(): Promise<SyncState> {
     if (JSON.stringify(merged) !== JSON.stringify(remote)) await push(merged);
     setSyncState("synced");
   } catch {
-    setSyncState("offline"); // çevrimdışı: yerel ilerleme geçerli
+    setSyncState("offline"); // offline: local progress stands
   }
   return syncState;
 }
 
-/** Açılışta ve internet geri geldiğinde çağrılır. */
+/** Called on load and whenever the connection comes back. */
 export function startSync(): () => void {
   void syncNow();
   const onOnline = () => void syncNow();
@@ -131,7 +131,7 @@ export function resetProgress() {
   commit(empty());
 }
 
-/** Bir turda verilen notları karta işler ve XP yazar. */
+/** Applies a round's grades to the card and records XP. */
 export function recordSession(grades: Record<string, Grade>, xpGained: number, now = new Date()) {
   const current = getProgress();
   const cards: Record<string, CardState> = { ...current.cards };
@@ -156,7 +156,7 @@ export function recordSession(grades: Record<string, Grade>, xpGained: number, n
     daysPlayed: current.daysPlayed.includes(today)
       ? current.daysPlayed
       : [...current.daysPlayed, today],
-    // Grafik ve ısı haritası için gün başına XP (turun XP'si +2 olabilir, o yüzden toplanır).
+    // Daily XP for the chart and heat map (a round may be +2, hence the addition).
     daily: { ...current.daily, [today]: (current.daily[today] ?? 0) + xpGained },
     sessions: current.sessions + 1,
   });
@@ -172,11 +172,11 @@ export function exportProgress(): string {
 const DECK_KEY = "okumo-trainer/deck";
 
 /**
- * Desteye son açılıştan sonra eklenen kayıtları döndürür ve "son görülen deste"yi günceller.
- * Sayfada bir kez hesaplanır: StrictMode efekti iki kez çalıştırsa da sonuç değişmez (ikinci
- * çağrı boş liste dönmez), böylece popup kaybolmaz.
- * ponytail: tavan — tüm kimlik listesi localStorage'da tutulur (birkaç KB); deste MB'lara
- * çıkarsa kimlik yerine `meta.generated` damgası + özet karşılaştırmasına geçilmeli.
+ * Returns the records added since the last visit and updates the "last seen deck".
+ * Computed once per page: even when StrictMode runs the effect twice the result is the same (the
+ * second call does not return an empty list), so the popup never disappears.
+ * ponytail: ceiling — the whole id list is kept in localStorage (a few KB); if the deck ever reaches
+ * megabytes, switch from ids to a `meta.generated` stamp plus a summary comparison.
  */
 let newItems: string[] | undefined;
 
@@ -186,13 +186,13 @@ export function detectNewDeckItems(all: string[]): string[] {
     try {
       seen = JSON.parse(localStorage.getItem(DECK_KEY) ?? "null");
     } catch {
-      /* bozuk kayıt: temel al, popup çıkmasın */
+      /* corrupt stamp: take it as the baseline, no popup */
     }
     newItems = newDeckIds(seen, all);
     try {
       localStorage.setItem(DECK_KEY, JSON.stringify(all));
     } catch {
-      /* kota dolu: tespit yine çalışır */
+      /* quota full: detection still works */
     }
   }
   return newItems;

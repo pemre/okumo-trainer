@@ -1,5 +1,5 @@
-// Ayrıştırıcının "sessiz kayıp" dedektörü: kayda dönüşmeyen satırlar sebebiyle raporlanır.
-// (Bu dosya tsconfig dışında — src/ dışındaki testler tsc ile denetlenmez.)
+// The parser's "silent loss" detector: lines that produce no record are reported with a reason.
+// (This file lives outside tsconfig — tests outside src/ are not type-checked by tsc.)
 import { describe, expect, test } from "bun:test";
 import { parseMarkdown } from "./import-notes.mjs";
 
@@ -15,18 +15,18 @@ const ORNEK = [
   "* cursus (kurs) vs opleiding (eğitim)",
 ].join("\n");
 
-describe("not ayrıştırıcısı", () => {
-  test("tablo ve madde satırları kayda dönüşür", () => {
+describe("notes parser", () => {
+  test("table and bullet lines turn into records", () => {
     const { items } = parseMarkdown(ORNEK);
     expect(items.map((i) => i.nl)).toEqual(["lopen", "fietsen", "stilstaan"]);
     expect(items[0].zin_tr).toBe("Eve yürüyorum.");
   });
 
-  test("kayda dönüşmeyen satırlar sebebiyle listelenir", () => {
+  test("lines that produce no record are listed with a reason", () => {
     const { atlanan } = parseMarkdown(ORNEK);
     expect(atlanan.map((a) => a.sebep)).toEqual([
-      "4 parçalı madde (en çok 3 okunur)",
-      "parantezli madde (dipnot sayılır)",
+      "bullet with 4 parts (at most 3 are read)",
+      "parenthesised bullet (treated as a footnote)",
     ]);
     expect(atlanan.map((a) => a.satir)).toEqual([8, 9]);
   });

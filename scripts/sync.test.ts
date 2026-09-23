@@ -1,4 +1,4 @@
-// İki cihazın ilerlemesini birleştiren mantığın sözleşmesi (bkz. README → "İlerleme ve eşitleme").
+// Contract of the merge logic between two devices (see README → "Progress and syncing").
 import { describe, expect, test } from "bun:test";
 import { emptyCard } from "../src/lib/srs";
 import { mergeProgress, newDeckIds, normalizeProgress } from "../src/lib/sync";
@@ -21,19 +21,19 @@ const base = (over: Partial<Progress> = {}): Progress => ({
 const card = (at: number, interval = 1) => ({ ...emptyCard("2026-09-01", at), interval });
 
 describe("mergeProgress", () => {
-  test("kart bazında en yeni güncelleme kazanır", () => {
+  test("per card the newest update wins", () => {
     const local = base({ cards: { appel: card(1000, 4) }, updatedAt: 1000 });
     const remote = base({ cards: { appel: card(2000, 9) }, updatedAt: 2000 });
     const merged = mergeProgress(local, remote);
     expect(merged.cards.appel.interval).toBe(9);
-    expect(mergeProgress(remote, local).cards.appel.interval).toBe(9); // sıradan bağımsız
+    expect(mergeProgress(remote, local).cards.appel.interval).toBe(9); // order-independent
   });
   test("tek tarafta olan kartlar korunur", () => {
     const local = base({ cards: { a: card(1) } });
     const remote = base({ cards: { b: card(2) } });
     expect(Object.keys(mergeProgress(local, remote).cards).sort()).toEqual(["a", "b"]);
   });
-  test("sayaçlar: XP en büyük, günler birleşim, seri yeni tarafın", () => {
+  test("counters: max XP, union of days, streak from the newer side", () => {
     const local = base({
       xp: 120,
       streak: 3,
@@ -54,39 +54,39 @@ describe("mergeProgress", () => {
     expect(merged.daysPlayed).toEqual(["2026-09-01", "2026-09-02"]);
     expect(merged.updatedAt).toBe(9);
   });
-  test("günlük XP: gün başına en büyük kazanır, eksik gün korunur", () => {
+  test("daily XP: the max per day wins, missing days stay missing", () => {
     const local = base({ daily: { "2026-09-20": 40, "2026-09-21": 10 }, updatedAt: 5 });
     const remote = base({ daily: { "2026-09-21": 80, "2026-09-22": 5 }, updatedAt: 9 });
     const merged = mergeProgress(local, remote);
     expect(merged.daily).toEqual({ "2026-09-20": 40, "2026-09-21": 80, "2026-09-22": 5 });
-    expect(mergeProgress(remote, local).daily).toEqual(merged.daily); // sıradan bağımsız
+    expect(mergeProgress(remote, local).daily).toEqual(merged.daily); // order-independent
   });
 });
 
 describe("newDeckIds", () => {
-  test("ilk açılış sessiz: kayıt yoksa hiçbiri yeni sayılmaz", () => {
+  test("first launch is silent: with no stamp nothing counts as new", () => {
     expect(newDeckIds(null, ["a", "b"])).toEqual([]);
     expect(newDeckIds(undefined, ["a"])).toEqual([]);
     expect(newDeckIds("bozuk kayıt", ["a"])).toEqual([]);
   });
-  test("yalnız sonradan eklenenler döner, sıra desteyi izler", () => {
+  test("only later additions are returned, order follows the deck", () => {
     expect(newDeckIds(["a", "b"], ["b", "c", "a", "d"])).toEqual(["c", "d"]);
     expect(newDeckIds(["a", "b"], ["a", "b"])).toEqual([]);
   });
-  test("deste küçülse bile kalanlar yeni sayılmaz", () => {
+  test("when the deck shrinks the leftovers are not new", () => {
     expect(newDeckIds(["a", "b", "c"], ["a"])).toEqual([]);
   });
 });
 
 describe("normalizeProgress", () => {
-  test("bozuk/eksik kayıt reddedilir", () => {
+  test("corrupt/incomplete stamp is rejected", () => {
     expect(normalizeProgress(null)).toBeNull();
     expect(
       normalizeProgress({ version: 2, xp: 1, streak: 0, cards: {}, daysPlayed: [] }),
     ).toBeNull();
     expect(normalizeProgress("ilerleme")).toBeNull();
   });
-  test("eksik alanlar tamamlanır", () => {
+  test("missing fields get filled in", () => {
     const normalized = normalizeProgress({
       version: 1,
       xp: 10,
@@ -98,9 +98,9 @@ describe("normalizeProgress", () => {
     expect(normalized?.bestStreak).toBe(2);
     expect(normalized?.sessions).toBe(0);
     expect(normalized?.updatedAt).toBe(0);
-    expect(normalized?.daily).toEqual({}); // eski kayıtlarda günlük XP yok → boş
+    expect(normalized?.daily).toEqual({}); // old progress files have no daily XP → empty
   });
-  test("günlük XP temizlenir: sayı olmayan ve negatif girdiler atılır", () => {
+  test("daily XP is sanitised: non-numeric and negative entries are dropped", () => {
     const normalized = normalizeProgress({
       version: 1,
       xp: 10,

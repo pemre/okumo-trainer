@@ -30,8 +30,8 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
 
   const locked = (id: string) => solved.includes(id);
   const right = useMemo(
-    // rightOrder zaten yalnızca left id'lerinden üretilir; ! bu değişmezi belirtir.
-    // biome-ignore lint/style/noNonNullAssertion: değişmez yukarıdaki satırda garanti
+    // rightOrder is built from the left ids only; the ! marks that invariant.
+    // biome-ignore lint/style/noNonNullAssertion: the invariant is guaranteed on the line above
     () => rightOrder.map((id) => left.find((w) => w.id === id)!),
     [rightOrder, left],
   );
@@ -102,10 +102,9 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
 
         <div className="flex flex-col gap-3">
           {right.map((w) => {
-            // Tasarım dili: İngilizce kalın, Türkçe ince. Açık dillere göre süzülür:
-            // EN kapalıysa Türkçe kalın olur, tek satır kalır.
-            const ana = langs.includes("en") ? w.en : w.tr;
-            const alt = langs.includes("tr") && langs.includes("en") ? w.tr : "";
+            // Design language: priority language bold, secondary thin on the sub-line. One language → one line.
+            const ana = langs[0] === "en" ? w.en : w.tr; // priority language
+            const alt = langs[1] ? (langs[1] === "tr" ? w.tr : w.en) : ""; // secondary: sub-line only
             return (
               <button
                 key={w.id}

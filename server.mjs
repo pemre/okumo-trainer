@@ -1,5 +1,5 @@
-// Derlenmiş uygulamayı yerelde servis eder + ilerleme eşitlemesi için küçük bir JSON deposu.
-// SwiftBar başlatır; dil.ev Traefik üzerinden buraya gelir. Bağımlılık yok.
+// Serves the built app locally plus a small JSON store for progress syncing.
+// Started by SwiftBar; dil.ev reaches it through Traefik. No dependencies.
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -9,7 +9,7 @@ const PORT = Number(process.env.OKUMO_PORT || 8911);
 const ROOT = path.join(import.meta.dir, "dist");
 const DATA_DIR = path.join(import.meta.dir, "data");
 const PROGRESS_FILE = path.join(DATA_DIR, "progress.json");
-const MAX_BODY = 512 * 1024; // ilerleme dosyası birkaç KB; üstü şüpheli
+const MAX_BODY = 512 * 1024; // the progress file is a few KB; anything above that is suspicious
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -37,7 +37,7 @@ function readBody(req) {
     req.on("data", (chunk) => {
       size += chunk.length;
       if (size > MAX_BODY) {
-        reject(new Error("gövde çok büyük"));
+        reject(new Error("body too large"));
         req.destroy();
         return;
       }
@@ -48,7 +48,7 @@ function readBody(req) {
   });
 }
 
-// Güven sınırı: şekil kontrolünden geçmeyen gövde diske yazılmaz.
+// Trust boundary: a body that fails the shape check never reaches the disk.
 const isProgress = (value) =>
   !!value &&
   typeof value === "object" &&
@@ -64,18 +64,18 @@ async function handleProgress(req, res) {
     try {
       sendJson(res, 200, JSON.parse(await readFile(PROGRESS_FILE, "utf8")));
     } catch {
-      sendJson(res, 200, null); // henüz kayıt yok
+      sendJson(res, 200, null); // nothing stored yet
     }
     return;
   }
   if (req.method === "PUT" || req.method === "POST") {
     try {
       const parsed = JSON.parse(await readBody(req));
-      if (!isProgress(parsed)) return sendJson(res, 400, { error: "geçersiz ilerleme gövdesi" });
+      if (!isProgress(parsed)) return sendJson(res, 400, { error: "invalid progress body" });
       await mkdir(DATA_DIR, { recursive: true });
       const tmp = `${PROGRESS_FILE}.tmp`;
       await writeFile(tmp, JSON.stringify(parsed, null, 1));
-      await rename(tmp, PROGRESS_FILE); // atomik: yarı yazılmış dosya kalmaz
+      await rename(tmp, PROGRESS_FILE); // atomic: no half-written file can survive
       sendJson(res, 200, { ok: true, updatedAt: parsed.updatedAt ?? 0 });
     } catch (error) {
       sendJson(res, 400, { error: String(error?.message ?? error) });
@@ -102,15 +102,17 @@ createServer(async (req, res) => {
   }
 
   const rel = decodeURIComponent(url.pathname).replace(/^\/+/, "");
-  // dist dışına çıkan yollar (%2e%2e%2f vb.) index.html'e düşer.
+  // Paths escaping dist (%2e%2e%2f etc.) fall back to index.html.
   const resolved = path.resolve(ROOT, rel);
-  let file =
-    resolved.startsWith(ROOT + path.sep) && existsSync(resolved) && !statSync(resolved).isDirectory()
+  const file =
+    resolved.startsWith(ROOT + path.sep) &&
+    existsSync(resolved) &&
+    !statSync(resolved).isDirectory()
       ? resolved
       : path.join(ROOT, "index.html");
   if (!existsSync(file)) {
     res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
-    res.end("dist/ yok — `bun run build` çalıştırın");
+    res.end("no dist/ — run `bun run build`");
     return;
   }
   res.writeHead(200, { "content-type": MIME[path.extname(file)] ?? "application/octet-stream" });

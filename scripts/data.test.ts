@@ -1,12 +1,12 @@
-// Veri katmanı sözleşmeleri: notlardan üretilen JSON'lar her zaman oyuna hazır olmalı.
-// (CI'da vault yok; bu yüzden repodaki üretilmiş veri denetlenir.)
+// Data-layer contracts: the JSONs generated from the notes must always be playable.
+// (CI has no vault, so the generated data committed to the repo is what gets checked.)
 import { describe, expect, test } from "bun:test";
 import connectieven from "../src/data/connectieven.json";
 import werkwoorden from "../src/data/werkwoorden.json";
 import woorden from "../src/data/woorden.json";
 
 describe("woorden.json", () => {
-  test("kayıtların hepsi oynanabilir: çeviri var, id benzersiz", () => {
+  test("every record is playable: translations present, ids unique", () => {
     expect(woorden.items.length).toBeGreaterThan(70);
     const ids = new Set<string>();
     for (const item of woorden.items) {
@@ -17,19 +17,19 @@ describe("woorden.json", () => {
     }
   });
 
-  test("kaynak notların üçü de temsil ediyor ve çoğunun örnek cümlesi var", () => {
+  test("all three source notes are represented and most records have an example sentence", () => {
     const bronnen = new Set(woorden.items.map((i) => i.bron));
     expect(bronnen.size).toBe(3);
     const withSentence = woorden.items.filter((i) => i.zin.length > 3).length;
     expect(withSentence / woorden.items.length).toBeGreaterThan(0.8);
   });
 
-  test("eksik alan bırakılmamış (notlar tek doğruluk kaynağı)", () => {
+  test("no field is left empty (the notes are the single source of truth)", () => {
     const eksik = woorden.items.filter((i) => i.eksik.length > 0);
     expect(eksik.map((i) => `${i.nl}:${i.eksik}`)).toEqual([]);
   });
 
-  test("her kaynağın, dosyayı açan bir obsidian:// bağlantısı var", () => {
+  test("every source has an obsidian:// link that opens the file", () => {
     for (const s of woorden.meta.sources) {
       expect(s.obsidian.startsWith("obsidian://open?vault=")).toBe(true);
       expect(decodeURIComponent(s.obsidian)).toContain(s.file);
@@ -38,7 +38,7 @@ describe("woorden.json", () => {
 });
 
 describe("connectieven.json", () => {
-  test("her bağlacın anlamı, işlevi ve onu kullanan bir örnek cümlesi var", () => {
+  test("every connective has a meaning, a function and an example sentence using it", () => {
     expect(connectieven.items.length).toBeGreaterThanOrEqual(5);
     for (const c of connectieven.items) {
       expect(c.tr.length).toBeGreaterThan(1);
@@ -48,7 +48,7 @@ describe("connectieven.json", () => {
     }
   });
 
-  test("bu haftanın bağlaçları içeride", () => {
+  test("this week's connectives are present", () => {
     const ids = connectieven.items.map((c) => c.id);
     for (const want of ["enerzijds", "daardoor", "daarentegen", "bovendien", "daarvoor"]) {
       expect(ids).toContain(want);
@@ -57,7 +57,7 @@ describe("connectieven.json", () => {
 });
 
 describe("werkwoorden.json", () => {
-  test("fiiller çekimleriyle ve aileleriyle birlikte geldi", () => {
+  test("verbs arrive with their conjugations and families", () => {
     expect(werkwoorden.items.length).toBeGreaterThan(200);
     const incomplete = werkwoorden.items.filter((v) => !v.vt || !v.voltooid);
     expect(incomplete.map((v) => v.inf)).toEqual([]);

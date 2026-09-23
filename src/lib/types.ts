@@ -41,7 +41,7 @@ export interface CardState {
   lapses: number;
   due: string;
   lastSeen: string | null;
-  /** Son güncelleme (epoch ms) — cihazlar arası birleştirmede hangi tarafın yeni olduğunu belirler. */
+  /** Last update (epoch ms) — decides which side is newer when merging devices. */
   at: number;
 }
 
@@ -53,10 +53,10 @@ export interface Progress {
   bestStreak: number;
   lastDay: string | null;
   daysPlayed: string[];
-  /** Gün başına kazanılan XP (YYYY-MM-DD → XP); grafik ve ısı haritası buradan beslenir. */
+  /** XP earned per day (YYYY-MM-DD → XP); feeds the chart and the heat map. */
   daily: Record<string, number>;
   sessions: number;
-  /** Son yerel değişiklik zamanı (epoch ms). */
+  /** Time of the last local change (epoch ms). */
   updatedAt: number;
 }
 

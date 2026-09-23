@@ -1,6 +1,6 @@
-// Bas geri bildirimi sözleşmesi: titreme gerçekten oynar, mükerrer basışta öncekini iptal eder,
-// desteklemeyen ortamda (API yok) sessizce hiçbir şey yapmaz. Tarayıcı karşılığı:
-// okumo_feedback_check.py (gerçek elemanda animasyonun başladığını ve tonun çalındığını doğrular).
+// Press-feedback contract: the shake really runs, a repeat press cancels the previous one and
+// unsupported environments (no API) stay silent. Browser counterpart:
+// okumo_feedback_check.py (asserts the animation starts and the tone plays on a real element).
 import { describe, expect, test } from "bun:test";
 import { feedbackSound, haptic, shake } from "../src/lib/feedback";
 
@@ -23,7 +23,7 @@ function fakeElement() {
 }
 
 describe("shake", () => {
-  test("sert titreme 8 kare / 480 ms, yumuşak 6 kare / 260 ms", () => {
+  test("hard shake is 8 frames / 480 ms, soft is 6 frames / 260 ms", () => {
     const { element, calls } = fakeElement();
     shake(element, "hard");
     expect(calls[0].frames).toHaveLength(8);
@@ -33,19 +33,19 @@ describe("shake", () => {
     expect(calls[1].timing).toMatchObject({ duration: 260 });
   });
 
-  test("aynı elemanda ikinci titreme öncekini iptal eder", () => {
+  test("a second shake on the same element cancels the previous one", () => {
     const { element, cancelled } = fakeElement();
     shake(element);
     shake(element);
     expect(cancelled).toEqual([0]);
   });
 
-  test("animasyon API'si olmayan elemanda sessizce çıkar", () => {
+  test("returns quietly when the element has no animation API", () => {
     expect(() => shake({} as Element)).not.toThrow();
     expect(() => shake(null)).not.toThrow();
   });
 
-  test("yalnızca translate kullanır (döndürme yok)", () => {
+  test("uses translate only (no rotation)", () => {
     const { element, calls } = fakeElement();
     shake(element, "hard");
     for (const frame of calls[0].frames) {
@@ -53,14 +53,14 @@ describe("shake", () => {
     }
   });
 
-  test("prefers-reduced-motion açıkken titreme oynamaz, ses ve titreşim çalışır", () => {
+  test("with prefers-reduced-motion the shake stops while sound and haptics keep working", () => {
     const { element, calls } = fakeElement();
-    // @ts-expect-error: test ortamında sahte window
+    // @ts-expect-error: fake window in the test environment
     globalThis.window = { matchMedia: () => ({ matches: true }) };
     shake(element, "hard");
     expect(calls).toHaveLength(0);
 
-    // @ts-expect-error: sahte matchMedia, MediaQueryList'in tamamı gerekmiyor
+    // @ts-expect-error: fake matchMedia, no need for a full MediaQueryList
     globalThis.window = { matchMedia: () => ({ matches: false }) };
     shake(element);
     expect(calls).toHaveLength(1);
@@ -70,14 +70,14 @@ describe("shake", () => {
   });
 });
 
-describe("ses ve titreşim", () => {
-  test("AudioContext yokken ton çalmak patlamaz", () => {
+describe("sound and haptics", () => {
+  test("playing a tone without AudioContext does not throw", () => {
     for (const kind of ["click", "success", "error", "finish"] as const) {
       expect(() => feedbackSound(kind)).not.toThrow();
     }
   });
 
-  test("AudioContext varsa doğru frekansı çalar", () => {
+  test("plays the right frequency when AudioContext exists", () => {
     const frequencies: number[] = [];
     class FakeContext {
       currentTime = 0;
@@ -104,13 +104,13 @@ describe("ses ve titreşim", () => {
         };
       }
     }
-    // @ts-expect-error: test ortamında sahte window/AudioContext
+    // @ts-expect-error: fake window/AudioContext in the test environment
     globalThis.window = { AudioContext: FakeContext };
     feedbackSound("success");
     expect(frequencies[0]).toBe(880);
   });
 
-  test("titreşim API'si yoksa sessizce çıkar", () => {
+  test("returns quietly without the vibration API", () => {
     expect(() => haptic()).not.toThrow();
     expect(() => haptic([10, 20])).not.toThrow();
   });

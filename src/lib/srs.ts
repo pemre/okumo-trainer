@@ -1,9 +1,9 @@
-// SM-2'den sadeleştirilmiş aralıklı tekrar (okumo'nun "doğru zamanda tekrar" fikri).
+// Spaced repetition simplified from SM-2 (okumo's "review at the right time" idea).
 import type { CardState, Grade } from "./types";
 
 export const DAY_MS = 86_400_000;
 
-/** Yerel gün anahtarı (YYYY-MM-DD) — saat dilimi kaymasın diye UTC'ye çevrilmiyor. */
+/** Local day key (YYYY-MM-DD) — never converted to UTC, so the day cannot shift. */
 export function dayKey(d: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -28,7 +28,7 @@ export function review(card: CardState, grade: Grade, now: Date = new Date()): C
       interval: 0,
       reps: 0,
       lapses: card.lapses + 1,
-      due: today, // aynı gün tekrar sorulur
+      due: today, // asked again the same day
       lastSeen: today,
       at: now.getTime(),
     };
@@ -62,8 +62,8 @@ export function shuffle<T>(list: T[], rand: () => number = Math.random): T[] {
 }
 
 /**
- * Oturum seçimi: vadesi gelmiş kartlar önce, sonra zayıflar (az tekrar / çok hata),
- * sonra hiç görülmemişler. Aynı oturumda tekrar yok.
+ * Session selection: due cards first, then the weak ones (few reviews / many lapses),
+ * then never-seen cards. No repeats within a session.
  */
 export function pickSession<T extends { id: string }>(
   items: T[],
@@ -93,7 +93,7 @@ export function pickSession<T extends { id: string }>(
   return queue.slice(0, Math.max(1, Math.min(size, queue.length)));
 }
 
-/** Çoktan seçmeli şıklar: doğru cevap + benzerleri. */
+/** Multiple-choice options: the right answer plus similar ones. */
 export function buildOptions<T>(
   correct: T,
   pool: T[],
@@ -109,7 +109,7 @@ export function buildOptions<T>(
   return shuffle([correct, ...others], rand);
 }
 
-/** Yazma alıştırmasında cevabı esnetir: büyük/küçük harf, noktalama, de/het. */
+/** Loosens the typed answer: case, punctuation, de/het. */
 export function normalizeAnswer(value: string): string {
   return value
     .toLowerCase()
@@ -123,10 +123,10 @@ export function checkTyped(input: string, expected: string): boolean {
   const b = normalizeAnswer(expected);
   if (!a) return false;
   if (a === b) return true;
-  // "de/het/een" iki tarafta da hoşgörülür (kullanıcı fazladan yazmış olabilir)
+  // "de/het/een" is tolerated on either side (the user may have typed it)
   const noArticle = (s: string) => s.replace(/^(de|het|een)\s+/, "");
   if (noArticle(a) === noArticle(b)) return true;
-  // parantezli ve "/" ayraçlı alternatifler ("(het) aanbod", "klaar / gereed")
+  // parenthesised and "/"-separated alternatives ("(het) aanbod", "klaar / gereed")
   const variants = expected
     .toLowerCase()
     .replace(/[()]/g, "")
@@ -137,8 +137,8 @@ export function checkTyped(input: string, expected: string): boolean {
 }
 
 /**
- * Uygulamanın cevap kabul kuralı: asıl cevap ya da alternatiflerden biri tutuyorsa doğru.
- * Tek yerde tutulur ki arayüz ve testler ayrı kurallar yürütmesin.
+ * The app's answer acceptance rule: correct when the main answer or one alternative matches.
+ * Kept in one place so the interface and the tests never run different rules.
  */
 export function checkAnswer(input: string, answers: (string | undefined)[]): boolean {
   return answers.some(

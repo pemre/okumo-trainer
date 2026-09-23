@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { LANG_ADI, LANGS, toggleLang, useT } from "../lib/i18n";
+import { type ReactNode, useState } from "react";
+import { dilTasi, LANG_ADI, LANGS, type Lang, toggleLang, useT } from "../lib/i18n";
 
 export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => void }) {
   const { t } = useT();
@@ -15,7 +15,7 @@ export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => vo
           ←
         </button>
       ) : null}
-      {/* min-w-0 + truncate: dar ekranda kırpılan başlık olsun, chip'ler alt satıra kaymasın */}
+      {/* min-w-0 + truncate: let the title clip on narrow screens instead of wrapping the chips */}
       <div className="min-w-0 truncate font-display text-base font-semibold tracking-tight sm:text-lg">
         okumo-trainer
       </div>
@@ -101,13 +101,15 @@ export function BigButton({
 }
 
 /**
- * Sağ üstteki küçük dil menüsü: hangi arayüz dilleri açık (TR / EN / ikisi).
- * Yerleşik `<details>`: JS durumu yok, tıklayınca açılır; seçenek işaretlenince açık kalır
- * (ikinci dili de işaretleyebilmek için). Son dili kapatma denemesi `toggleLang` içinde yok sayılır.
- * ponytail: tavan — dışa tıklayınca kapanmaz (özet tekrar tıklanır); gerekirse document click dinleyicisi.
+ * Small language menu in the top bar: which interface languages are on (TR / EN / both).
+ * Native `<details>`: no JS state, opens on click and stays open when an option is toggled
+ * (so a second language can be toggled too). Turning off the last language is ignored in `toggleLang`.
+ * ponytail: known ceiling — clicking outside does not close it (tap the summary again); add a
+ * document click listener if that ever matters.
  */
 export function LangMenu() {
   const { langs, t } = useT();
+  const [cek, setCek] = useState<Lang | null>(null); // language being dragged (null on drop)
   return (
     <details className="relative" data-testid="lang-menu">
       <summary
@@ -118,19 +120,63 @@ export function LangMenu() {
       </summary>
       <div className="absolute right-0 z-30 mt-2 w-60 rounded-cozy bg-surface p-3 text-left shadow-cozy">
         <div className="text-xs font-semibold">{t("Arayüz dilleri")}</div>
-        {LANGS.map((l) => (
-          <label key={l} className="mt-2 flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              data-testid={`lang-${l}`}
-              checked={langs.includes(l)}
-              onChange={() => toggleLang(l)}
-            />
-            {LANG_ADI[l]} <span className="text-inksoft">({l.toUpperCase()})</span>
-          </label>
-        ))}
+        {LANGS.map((l) => {
+          const acik = langs.includes(l);
+          return (
+            // biome-ignore lint/a11y/noStaticElementInteractions: drop target for reordering the rows
+            <div
+              key={l}
+              data-testid={`lang-row-${l}`}
+              onDragOver={(e) => {
+                if (!cek || cek === l) return;
+                e.preventDefault(); // allow the drop → live reorder
+                dilTasi(cek, l);
+              }}
+              className={`mt-2 flex items-center gap-2 text-sm ${acik ? "" : "text-inksoft"}`}
+            >
+              <input
+                type="checkbox"
+                data-testid={`lang-${l}`}
+                checked={acik}
+                onChange={() => toggleLang(l)}
+              />
+              <span className="flex-1">
+                {LANG_ADI[l]} <span className="text-inksoft">({l.toUpperCase()})</span>
+              </span>
+              {acik && (
+                <>
+                  {/* Native HTML5 drag: mouse. Touch and keyboard use the ↑ button next to it. */}
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: drag handle, ↑ covers a11y */}
+                  <span
+                    draggable
+                    data-testid={`lang-drag-${l}`}
+                    title={t("Sırala")}
+                    onDragStart={() => setCek(l)}
+                    onDragEnd={() => setCek(null)}
+                    className="cursor-grab select-none px-1 text-inksoft"
+                  >
+                    ⠿
+                  </span>
+                  <button
+                    type="button"
+                    data-testid={`lang-up-${l}`}
+                    aria-label={t("Öncelikli yap")}
+                    title={t("Öncelikli yap")}
+                    disabled={l === langs[0]}
+                    onClick={() => dilTasi(l, langs[langs.indexOf(l) - 1])}
+                    className="rounded px-1 text-inksoft disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
         <p className="mt-2 text-xs text-inksoft">
-          {t("En az bir dil açık kalır; çeviriler açık dillere göre gösterilir.")}
+          {t(
+            "Öncelikli dil her yerde, diğeri yalnız anlam açıklamalarında görünür. En az bir dil açık kalır.",
+          )}
         </p>
       </div>
     </details>

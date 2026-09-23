@@ -18,8 +18,8 @@ export default function SessionGame({
   onFinish: (r: GameResult) => void;
 }) {
   const { t, langs } = useT();
-  // Tur başında açık diller sabitlenir: tur ortasında dil değişse sorular yerinden oynamasın
-  // (metinler ve bilgi satırları anında yeni dile geçer, soru akışı tur bitene kadar sabit kalır).
+  // Languages are frozen when a round starts: switching mid-round must not shuffle the questions
+  // (texts and detail rows switch instantly, the question flow stays put until the round ends).
   const [turDilleri] = useState(getLangs);
   const questions = useMemo<Question[]>(
     () => buildQuestions(mode, SIZE, getProgress().cards, turDilleri),
@@ -28,7 +28,7 @@ export default function SessionGame({
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
-  const [order, setOrder] = useState<number[]>([]); // scramble: seçilen kelime çiplerinin sırası
+  const [order, setOrder] = useState<number[]>([]); // scramble: order of the tapped word chips
   const [state, setState] = useState<"asking" | "right" | "wrong">("asking");
   const grades = useRef<Record<string, Grade>>({});
   const card = useRef<HTMLDivElement | null>(null);
@@ -46,7 +46,7 @@ export default function SessionGame({
     if (ok) correctCount.current += 1;
     else if (!wrongIds.current.includes(q.id)) wrongIds.current.push(q.id);
     setState(ok ? "right" : "wrong");
-    // yap.ev'in tuş hissi: ton + titreşim + kısa titreme (yanlışta daha sert)
+    // yap.ev key feel: tone + haptics + short shake (harsher on a wrong answer)
     feedbackSound(ok ? "success" : "error");
     haptic();
     shake(card.current, ok ? "soft" : "hard");
@@ -61,7 +61,7 @@ export default function SessionGame({
       const correct = correctCount.current;
       const gradeMap = grades.current;
       const xp = Object.values(gradeMap).reduce<number>((sum, g) => sum + (g === 0 ? 2 : 10), 0);
-      // Tur bitti: bitiş fanfarı + tüm sayfayı titret (oyun ekranı birazdan kapanıyor)
+      // Round finished: closing fanfare + shake the whole page (this screen is about to close)
       feedbackSound("finish");
       haptic();
       shake(document.querySelector("[data-feedback-root]"), "hard");
@@ -144,7 +144,7 @@ export default function SessionGame({
                     const used = order.includes(i);
                     return (
                       <button
-                        // biome-ignore lint/suspicious/noArrayIndexKey: aynı kelime birden çok kez geçebilir
+                        // biome-ignore lint/suspicious/noArrayIndexKey: the same word may appear twice
                         key={`${word}-${i}`}
                         type="button"
                         data-testid={`chip-${word}`}
@@ -190,7 +190,7 @@ export default function SessionGame({
             }}
           >
             <input
-              // biome-ignore lint/a11y/noAutofocus: alıştırma ekranı, klavye akışı hedefleniyor
+              // biome-ignore lint/a11y/noAutofocus: practice screen, keyboard flow is the point
               autoFocus
               value={input}
               data-testid="typed-answer"
@@ -216,30 +216,24 @@ export default function SessionGame({
           <div className="font-display text-lg font-semibold">
             {state === "right" ? t("Doğru!") : t("Yanlış — doğrusu: {cevap}", { cevap: q.answer })}
           </div>
-          {/* Bilgi satırları açık dillere göre: NL her zaman (öğrenilen dil), EN/TR açıksa. */}
+          {/* Meaning explanations: NL always (the target language), then enabled languages in priority order. */}
           <dl className="mt-2 grid grid-cols-1 gap-1 text-sm text-inksoft sm:grid-cols-2">
             <div>
               <dt className="inline font-semibold">NL: </dt>
               <dd className="inline">{q.detail.nl}</dd>
             </div>
-            {langs.includes("en") ? (
-              <div>
-                <dt className="inline font-semibold">EN: </dt>
-                <dd className="inline">{q.detail.en}</dd>
+            {langs.map((l) => (
+              <div key={l}>
+                <dt className="inline font-semibold">{l.toUpperCase()}: </dt>
+                <dd className="inline">{l === "tr" ? q.detail.tr : q.detail.en}</dd>
               </div>
-            ) : null}
-            {langs.includes("tr") ? (
-              <div>
-                <dt className="inline font-semibold">TR: </dt>
-                <dd className="inline">{q.detail.tr}</dd>
-              </div>
-            ) : null}
+            ))}
             {q.detail.zin ? (
               <div className="sm:col-span-2">
                 <dt className="inline font-semibold">{t("Örnek: ")}</dt>
                 <dd className="inline italic">
                   {q.detail.zin}
-                  {/* Cümle çevirisi veride yalnız Türkçe (`zin_tr`): TR kapalıysa gösterilmez. */}
+                  {/* The sentence translation exists only in Turkish (`zin_tr`): hidden when TR is off. */}
                   {langs.includes("tr") && q.detail.zin_tr ? ` — ${q.detail.zin_tr}` : ""}
                 </dd>
               </div>

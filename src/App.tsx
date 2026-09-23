@@ -65,7 +65,7 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
   },
 ];
 
-/** Yeni kayıt popup'ında listelenen en fazla satır — fazlası "… ve N tane daha" olur. */
+/** Max rows listed in the new-items popup — the rest collapse into "… and N more". */
 const NEW_ITEMS_SHOWN = 20;
 
 function describe(id: string): { nl: string; tr: string; en: string } | null {
@@ -81,7 +81,7 @@ function describe(id: string): { nl: string; tr: string; en: string } | null {
   return w ? { nl: w.nl, tr: w.tr, en: w.en } : null;
 }
 
-/** Kayıt satırı: `NL — <açık dillerdeki çeviri>` — yeni kayıt popup'ı ve deste listesi aynı biçim. */
+/** Deck row: `NL — <meaning in the enabled languages>` — new-items popup and deck list share it. */
 function RecordRow({ id }: { id: string }) {
   const { ceviri } = useT();
   const info = describe(id);
@@ -94,8 +94,8 @@ function RecordRow({ id }: { id: string }) {
   );
 }
 
-/** Deste grupları: tekrar sayacı, yeni kayıt tespiti ve "kayıt" listesi bu tek kaynaktan beslenir.
- *  Liste için alfabetik sıralanır (Hollandaca sözlük sırası) — kart sırası önemsiz, damga farkı küme. */
+/** Deck groups: the single source for the review counter, new-item detection and the deck list.
+ *  Sorted alphabetically (Dutch dictionary order) — card order is irrelevant, the stamp diff is a set. */
 const nlSirala = (a: { nl: string }, b: { nl: string }) => a.nl.localeCompare(b.nl, "nl");
 
 const DECK_GROUPS = [
@@ -120,16 +120,16 @@ export default function App() {
   const newItemsDialog = useRef<HTMLDialogElement>(null);
   const deckDialog = useRef<HTMLDialogElement>(null);
 
-  // Açılışta ve internet geri geldiğinde sunucuyla eşitle (sunucu yoksa yerel moda düşer).
+  // Sync with the server on load and whenever the connection comes back (falls back to local).
   useEffect(() => startSync(), []);
 
-  // Destedeki tüm kart kimlikleri: tekrar sayacı, yeni kayıt tespiti ve "kayıt" listesi aynı listeden.
-  // Fiil kimliği de `v:` önekli (SRS anahtarı `v:<id>:<form>`) — öneksiz hâlde `describe()`
-  // fiili çözemiyor ve popup satırı boş kalıyordu.
+  // Every card id in the deck: review counter, new-item detection and the deck list share it.
+  // Verb ids keep the `v:` prefix (SRS key `v:<id>:<form>`) — without it `describe()` could not
+  // resolve a verb and the popup row silently rendered empty.
   const allIds = useMemo(() => DECK_GROUPS.flatMap((g) => g.ids), []);
 
-  // Deste listesi araması: NL + tüm çeviriler üzerinde basit içerik araması (harf duyarsız).
-  // Kapalı dilde de arama çalışır (İngilizce kapalı olsa "reach" yine bulur) — daha az sürpriz.
+  // Deck search: plain case-insensitive substring match over NL + every translation.
+  // A disabled language still matches (turning English off still finds "reach") — fewer surprises.
   const deckGroups = useMemo(() => {
     const q = deckQuery.trim().toLocaleLowerCase();
     if (!q) return DECK_GROUPS.map((g) => ({ ...g, ids: g.ids, hepsi: g.ids.length }));
@@ -143,7 +143,7 @@ export default function App() {
   }, [deckQuery]);
   const deckHits = deckGroups.reduce((n, g) => n + g.ids.length, 0);
 
-  // Eşitleme/açılışta deste büyümüşse (yeni ders notları içe aktarıldı) haber ver: bir kez.
+  // Announce a grown deck (new lesson notes imported) once — on load and after a sync.
   useEffect(() => {
     const added = detectNewDeckItems(allIds);
     if (!added.length) return;
@@ -323,9 +323,9 @@ export default function App() {
               </button>
             </div>
 
-            {/* Kaynak listesi popup: dosyalar obsidian:// bağlantısı (kasa "emre").
-                Yerleşik <dialog> + showModal(): odak tuzağı, ESC ve arka plan karartması hazır gelir.
-                Kapatma: ESC ya da "Kapat" düğmesi (arkaya tıklama a11y lint'ini gereksiz tetiklerdi). */}
+            {/* Sources popup: files as obsidian:// links (vault "emre").
+                Native <dialog> + showModal(): focus trap, ESC and backdrop come for free.
+                Closing: ESC or the "Kapat" button (backdrop clicks trip an a11y lint for no gain). */}
             <dialog
               ref={sourcesDialog}
               className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
@@ -352,8 +352,8 @@ export default function App() {
               </div>
             </dialog>
 
-            {/* Yeni kayıt popup'ı: deste son açılıştan sonra büyüdüyse (yeni ders notları
-                içe aktarıldı) bir kez açılır. Yerleşik <dialog>: odak tuzağı + ESC hazır. */}
+            {/* New-items popup: opened once when the deck grew since the last visit (new lesson
+                notes imported). Native <dialog>: focus trap + ESC for free. */}
             <dialog
               ref={newItemsDialog}
               data-testid="new-items"
@@ -380,8 +380,8 @@ export default function App() {
               </div>
             </dialog>
 
-            {/* Deste listesi: sağ alttaki "N kayıt" düğmesi tüm kayıtları gösterir (gruplu).
-                Aynı <dialog> kalıbı; satırlar RecordRow ile yeni kayıt popup'ıyla aynı biçimde. */}
+            {/* Deck list: the "N kayıt" button in the footer shows every record, grouped.
+                Same <dialog> pattern; rows use RecordRow, identical to the new-items popup. */}
             <dialog
               ref={deckDialog}
               data-testid="deck"

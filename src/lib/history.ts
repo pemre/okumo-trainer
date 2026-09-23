@@ -1,6 +1,6 @@
-// Isı haritası ve XP grafiği için günlük seri üretimi. Saf fonksiyonlar (test: scripts/history.test.ts).
-// Kaynak: Progress.daily (YYYY-MM-DD → o gün kazanılan XP). Eksik günler 0 ile doldurulur, çünkü
-// hem react-activity-calendar hem recharts sürekli bir eksen bekler.
+// Daily series builder for the heat map and the XP chart. Pure functions (test: scripts/history.test.ts).
+// Source: Progress.daily (YYYY-MM-DD → XP earned that day). Missing days are filled with 0, because
+// both react-activity-calendar and recharts expect a continuous axis.
 import { addDays, dayKey } from "./srs";
 
 export const CHART_DAYS = 30;
@@ -10,19 +10,19 @@ const XP_PER_LEVEL = 30;
 export interface DayPoint {
   date: string;
   xp: number;
-  /** Isı haritası renk seviyesi (0-4). */
+  /** Heat-map colour level (0-4). */
   level: number;
 }
 
-/** Günlük XP → 0-4 seviye (30/60/90/120 XP eşikleri). */
+/** Daily XP → level 0-4 (30/60/90/120 XP thresholds). */
 export function levelFor(xp: number): number {
   if (!Number.isFinite(xp) || xp <= 0) return 0;
   return Math.min(4, Math.ceil(xp / XP_PER_LEVEL));
 }
 
 /**
- * Bugünle biten son `days` günün serisi. Tarihler takvim günü üzerinden yürünür (`addDays`),
- * milisaniye çıkarma yaz saati geçişlerinde günü kaydırabilirdi.
+ * Series for the last `days` days ending today. Dates advance by calendar day (`addDays`);
+ * subtracting milliseconds would shift a day across a DST change.
  */
 export function dailySeries(
   daily: Record<string, number>,
@@ -38,7 +38,7 @@ export function dailySeries(
   return points;
 }
 
-/** Grafikteki eğilim çizgisi: her noktada kendisi dâhil son `window` günün ortalaması. */
+/** Trend line: at each point the average of the last `window` days including itself. */
 export function movingAverage(values: number[], window = 7): number[] {
   return values.map((_, i) => {
     const slice = values.slice(Math.max(0, i - window + 1), i + 1);
@@ -46,7 +46,7 @@ export function movingAverage(values: number[], window = 7): number[] {
   });
 }
 
-/** react-activity-calendar v3 satırları: {date, count, level}. */
+/** react-activity-calendar v3 rows: {date, count, level}. */
 export function calendarRows(
   daily: Record<string, number>,
   days: number = CALENDAR_DAYS,

@@ -1,13 +1,13 @@
-// İki cihazın ilerlemesini birleştirir: kart kart en yeni kazanır, sayaçlar korunur.
-// Saf fonksiyon — ağ katmanı store.ts'te.
+// Merges two devices' progress: per card the newest wins, counters are preserved.
+// Pure function — the network layer lives in store.ts.
 import type { CardState, Progress } from "./types";
 
 const emptyCards = (): Record<string, CardState> => ({});
 
 /**
- * Gün başına XP birleşimi: gün başına EN BÜYÜK değer kazanır (XP sayacıyla aynı kural).
- * ponytail: tavan — iki cihazın aynı gün kazandığı XP toplanmaz, çift saymak yerine eksik sayar.
- * Cihaz başına ayrım gerekirse kayda cihaz kimliği eklenmeli; o zaman toplam gün bazında alınır.
+ * Daily XP merge: the LARGEST value per day wins (same rule as the XP counter).
+ * ponytail: ceiling — XP earned by two devices on the same day is not summed; it under-counts
+ * rather than double-counts. Per-device separation would need a device id plus a sum per day.
  */
 function mergeDaily(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
   const merged: Record<string, number> = { ...a };
@@ -42,8 +42,8 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
 }
 
 /**
- * Cihazın son gördüğü deste ile şimdiki desteyi karşılaştırır: yalnız sonradan eklenenler döner.
- * Kayıt yoksa (ilk açılış, temizlenmiş depo) sessizce temel alınır — popup çıkmaz.
+ * Compares the deck a device last saw with the current one: only later additions are returned.
+ * With no stamp (first launch, cleared storage) it is taken as the baseline silently — no popup.
  */
 export function newDeckIds(seen: unknown, all: string[]): string[] {
   if (!Array.isArray(seen)) return [];
@@ -51,7 +51,7 @@ export function newDeckIds(seen: unknown, all: string[]): string[] {
   return all.filter((id) => !known.has(id));
 }
 
-/** Sunucuya gönderilen gövdenin boyut sınırı (kart sayısı büyürse de küçük kalır). */
+/** Size limit for the body sent to the server (stays small however the card count grows). */
 export const MAX_PROGRESS_BYTES = 512 * 1024;
 
 export function isValidProgress(value: unknown): value is Progress {
@@ -67,7 +67,7 @@ export function isValidProgress(value: unknown): value is Progress {
   );
 }
 
-/** Günlük XP kaydını temizler: sayı olmayan, sonsuz ya da negatif girdiler atılır. */
+/** Sanitises the daily XP record: non-numeric, infinite or negative entries are dropped. */
 function sanitizeDaily(value: unknown): Record<string, number> {
   if (!value || typeof value !== "object") return {};
   const out: Record<string, number> = {};
@@ -77,7 +77,7 @@ function sanitizeDaily(value: unknown): Record<string, number> {
   return out;
 }
 
-/** Eksik alanlı eski/bozuk kayıtları oynanabilir hale getirir. */
+/** Makes old/corrupt progress with missing fields playable again. */
 export function normalizeProgress(value: unknown): Progress | null {
   if (!isValidProgress(value)) return null;
   return {

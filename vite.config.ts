@@ -1,9 +1,9 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  // GitHub Pages'ta hem kök hem /pull/<n>/ altında çalışsın diye göreli taban
+  // relative base so it works both at the root and under /pull/<n>/ on GitHub Pages
   base: "./",
   plugins: [react(), tailwindcss()],
   build: { outDir: "dist", emptyOutDir: true },
