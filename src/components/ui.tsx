@@ -17,7 +17,9 @@ export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => vo
       <div className="min-w-0 truncate font-display text-base font-semibold tracking-tight sm:text-lg">
         okumo-trainer
       </div>
-      <div className="ml-auto flex shrink-0 items-center gap-1 text-xs sm:gap-2 sm:text-sm">{right}</div>
+      <div className="ml-auto flex shrink-0 items-center gap-1 text-xs sm:gap-2 sm:text-sm">
+        {right}
+      </div>
     </header>
   );
 }

@@ -61,7 +61,10 @@ export function useProgress(): Progress {
 
 export function useSyncState(): SyncState {
   return useSyncExternalStore(
-    (l) => (syncListeners.add(l), () => syncListeners.delete(l)),
+    (listener) => {
+      syncListeners.add(listener);
+      return () => syncListeners.delete(listener);
+    },
     () => syncState,
     () => syncState,
   );

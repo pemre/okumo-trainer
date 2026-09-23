@@ -28,6 +28,8 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
 
   const locked = (id: string) => solved.includes(id);
   const right = useMemo(
+    // rightOrder zaten yalnızca left id'lerinden üretilir; ! bu değişmezi belirtir.
+    // biome-ignore lint/style/noNonNullAssertion: değişmez yukarıdaki satırda garanti
     () => rightOrder.map((id) => left.find((w) => w.id === id)!),
     [rightOrder, left],
   );
