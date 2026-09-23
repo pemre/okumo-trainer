@@ -84,7 +84,8 @@ export default function SessionGame({
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-4">
       <div className="mb-4 flex items-center gap-3">
-        <ProgressBar value={index + (state === "asking" ? 0 : 1)} max={questions.length} />
+        {/* The bar and the counter share one base (the question you are on), so "10/10" is a full bar. */}
+        <ProgressBar value={index + 1} max={questions.length} />
         <span className="shrink-0 text-sm text-inksoft">
           {index + 1}/{questions.length}
         </span>

@@ -153,7 +153,12 @@ vault name is the folder name).
 | 🔗 **Connectives** | Fill the gap in a sentence: half multiple choice, half typed. | `c:<slug>` |
 | 🔄 **Verb drilling** | Verb + requested form (past singular/plural, past participle) → you type the conjugation. The sound-pattern family is shown as a hint. | `v:<csv-row>:<form>` |
 
-Ten questions per round (five pairs when matching). A correct answer is +10 XP, a wrong one +2 XP;
+Ten questions per round (five pairs when matching). A round is only as long as its pool allows:
+**connectives run 9 questions** because the data holds 9 of them (every other mode reaches 10). The
+round header shows `k / N` for the question you are on and the bar uses the *same* base, so the last
+question is a full bar — the bar never trails the counter.
+
+A correct answer is +10 XP, a wrong one +2 XP;
 wrong answers are listed at the end of the round and the card's review date is pulled back to today.
 Level: every 200 XP is one level.
 
@@ -440,6 +445,7 @@ python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # sources 
 python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # calendar opens at the far right (today)
 python3 ~/.hermes/cache/scratch/okumo_new_items_check.py              # new-records popup: quiet first load, 4 new words
 python3 ~/.hermes/cache/scratch/okumo_lang_menu_check.py              # language menu: priority order, persistence, game+deck, 375 px
+python3 ~/.hermes/cache/scratch/okumo_progress_check.py            # round bar: label = bar base, last question = 100%, connectives = 9
 python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py             # "N records" button → the whole deck (335 = 111+9+215)
 bun run build          # build
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
