@@ -327,9 +327,9 @@ Ana sayfanın altındaki **"N kayıt"** düğmesi (eskiden düz metindi) desteni
   Yeni grup türü (örn. deyimler) eklemek = `DECK_GROUPS`'a bir satır.
 - **Arama kutusu** (popup içinde, `type="search"`): `describe()` metninin tamamında (Hollandaca **ve**
   Türkçe) harf duyarsız içerik araması; kısmi yazım yeter ("twij" → twijfel). Süzülürken grup başlığı
-  `eşleşen / toplam` gösterir, hiç sonuç yoksa "Aramayla eşleşen kayıt yok." Popup kapanınca arama
-  sıfırlanır (`onClose`). Süzme her tuşta yeniden yapılır — 335 kayıt için ölçülebilir bir maliyet yok;
-  büyürse `describe` çağrıları yerine modül seviyesinde bir `Map` indeksi kur.
+  `eşleşen / toplam` gösterir, eşleşmeyen grup **gizlenir**, hiç sonuç yoksa "Aramayla eşleşen kayıt
+  yok." Popup kapanınca arama sıfırlanır (`onClose`). Süzme her tuşta yeniden yapılır — 335 kayıt için
+  ölçülebilir bir maliyet yok; büyürse `describe` çağrıları yerine modül seviyesinde bir `Map` indeksi kur.
 - Kart sırası önemsiz (damga farkı küme); liste yalnız okunur, oyun akışına dokunmaz.
 - Doğrulama: `python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py [adres]` — düğme metni =
   popup başlığı = grup satır toplamı (şu an 335 = 111+9+215), arama (NL, TR, kısmi, boş sonuç,
