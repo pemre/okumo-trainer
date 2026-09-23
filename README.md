@@ -30,6 +30,7 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 |---|---|
 | Yeni oyun modu | `src/games/questions.ts`'e soru üretici + `App.tsx` MODES kartı + README "Oyun modları" satırı + `scripts/questions.test.ts`'e kapsam testi |
 | Yeni görsel/grafik bileşeni | `src/components/History.tsx` + hesap `src/lib/history.ts`'te (saf) + `scripts/history.test.ts` + README "Grafik ve takvim" |
+| Üst çubuk / chip düzeni | Dar ekranda tek satır kalmalı: kırpılan `TopBar` başlığı, `shrink-0` chip'ler, boyut `sm:` ile tek yerden — `okumo_mobile_check.py` ile 320/375 px'te doğrulanır |
 | Yeni etkileşim öğesi (düğme, çip, form) | Tarayıcı duman testinde **tıklanarak** doğrulanır, sadece klavye (Enter) ile geçilmez — `BigButton` `type="button"`'dır, formu kendiliğinden göndermez |
 | Ses/titreşim/titreme davranışı | `src/lib/feedback.ts` + `scripts/feedback.test.ts` + README "Bas geri bildirimi"; kanonik sürüm kardeş depo `ay-ui-library`'deki `PressFeedback` bloğu — ikisi aynı commit'te uyumlu tutulur |
 | Veri şeması değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + README "Veri kuralları" birlikte değişir |
@@ -67,7 +68,7 @@ bun run serve       # dist'i http://127.0.0.1:8911 üzerinde servis eder
 ```
 
 Yerelde SwiftBar'dan yönetilir:
-`~/Downloads/github-pemre/swiftbar-plugins/okumo-trainer.30s.sh`
+`~/Downloads/github-pemre/swiftbar-plugins/modules/okumo-trainer.30s.sh`
 (durum, başlat/durdur/yeniden başlat, **derle**, **sınıf notlarını içe aktar** = import+build+restart,
 günlükler, "dist eski" uyarısı). Günlükler: `/tmp/okumo-trainer-{server,import,swiftbar}.log`.
 
@@ -193,6 +194,21 @@ Ana sayfada iki görsel var; ikisi de `Progress.daily` (gün → o gün kazanıl
 
 ---
 
+### Mobil düzen (dar ekran)
+
+Üst çubuk **her zaman tek satırdır**; 320 px'te bile chip'ler alt satıra kaymaz (kaydığında çubuk
+81 px'e çıkıyordu, artık 49 px). Kural üç parçalı ve `src/components/ui.tsx` içinde:
+
+- Başlık `min-w-0 truncate`: yer daralınca önce **başlık kırpılır** ("okumo-tra…"), chip'ler kaymaz.
+- Chip'ler `shrink-0 whitespace-nowrap`: sıkışmaz, içerikleri iki satıra bölünmez.
+- Boyut tek yerden: `TopBar` sağ kümesi `text-xs gap-1 px-3` (mobil) → `sm:text-sm sm:gap-2`, `Pill`
+  kendi yazı boyutunu **vermez** (yoksa sağdaki küme ayarını ezer).
+
+Doğrulaması: `okumo_mobile_check.py` — 320/375/414/768 px × (ana sayfa + oyun ekranı) ölçer; sayfa
+yatay kaymıyor, chip'ler tek satır ve ekran içinde, başlık ≥60 px görünür olmalı.
+
+---
+
 ## 4) Veri kuralları
 
 - Ders notları **hiçbir zaman** değiştirilmez; `import-notes.mjs` sadece okur.
@@ -253,6 +269,7 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 bun test               # 45 test / 6 dosya
 bun run lint           # biome check (CI'da aynı adım var)
 bunx tsc --noEmit      # tip kontrolü
+python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px üst çubuk
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
 ```

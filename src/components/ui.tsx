@@ -2,19 +2,22 @@ import type { ReactNode } from "react";
 
 export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => void }) {
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-surface2 bg-sand/90 px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-20 flex flex-nowrap items-center gap-2 border-b border-surface2 bg-sand/90 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
       {onHome ? (
         <button
           type="button"
           onClick={onHome}
-          className="rounded-full px-2 py-1 text-inksoft hover:bg-surface2"
+          className="-ml-1 shrink-0 rounded-full px-2 py-1 text-inksoft hover:bg-surface2"
           aria-label="Ana sayfa"
         >
           ←
         </button>
       ) : null}
-      <div className="font-display text-lg font-semibold tracking-tight">okumo-trainer</div>
-      <div className="ml-auto flex items-center gap-2 text-sm">{right}</div>
+      {/* min-w-0 + truncate: dar ekranda kırpılan başlık olsun, chip'ler alt satıra kaymasın */}
+      <div className="min-w-0 truncate font-display text-base font-semibold tracking-tight sm:text-lg">
+        okumo-trainer
+      </div>
+      <div className="ml-auto flex shrink-0 items-center gap-1 text-xs sm:gap-2 sm:text-sm">{right}</div>
     </header>
   );
 }
@@ -23,7 +26,7 @@ export function Pill({ children, title }: { children: ReactNode; title?: string 
   return (
     <span
       title={title}
-      className="rounded-full bg-surface px-3 py-1 text-sm font-semibold text-inksoft shadow-cozy"
+      className="shrink-0 whitespace-nowrap rounded-full bg-surface px-2 py-0.5 font-semibold text-inksoft shadow-cozy sm:px-3 sm:py-1"
     >
       {children}
     </span>
