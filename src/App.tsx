@@ -80,6 +80,32 @@ function describe(id: string): { nl: string; tr: string } | null {
   return w ? { nl: w.nl, tr: w.tr } : null;
 }
 
+/** Kayıt satırı: `NL — TR` — yeni kayıt popup'ı ve deste listesi aynı biçimi kullanır. */
+function RecordRow({ id }: { id: string }) {
+  const info = describe(id);
+  if (!info) return null;
+  return (
+    <li>
+      <span className="font-semibold">{info.nl}</span>{" "}
+      <span className="text-inksoft">— {info.tr}</span>
+    </li>
+  );
+}
+
+/** Deste grupları: tekrar sayacı, yeni kayıt tespiti ve "kayıt" listesi bu tek kaynaktan beslenir.
+ *  Liste için alfabetik sıralanır (Hollandaca sözlük sırası) — kart sırası önemsiz, damga farkı küme. */
+const nlSirala = (a: { nl: string }, b: { nl: string }) => a.nl.localeCompare(b.nl, "nl");
+
+const DECK_GROUPS = [
+  { ad: "Kelimeler", icon: "📖", ids: [...words].sort(nlSirala).map((w) => w.id) },
+  { ad: "Bağlaçlar", icon: "🔗", ids: [...connectives].sort(nlSirala).map((c) => `c:${c.id}`) },
+  {
+    ad: "Fiiller",
+    icon: "🔄",
+    ids: [...verbs].sort((a, b) => a.inf.localeCompare(b.inf, "nl")).map((v) => `v:${v.id}`),
+  },
+];
+
 export default function App() {
   const progress = useProgress();
   const sync = useSyncState();
@@ -88,21 +114,15 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const sourcesDialog = useRef<HTMLDialogElement>(null);
   const newItemsDialog = useRef<HTMLDialogElement>(null);
+  const deckDialog = useRef<HTMLDialogElement>(null);
 
   // Açılışta ve internet geri geldiğinde sunucuyla eşitle (sunucu yoksa yerel moda düşer).
   useEffect(() => startSync(), []);
 
-  // Destedeki tüm kart kimlikleri: tekrar sayacı ve yeni kayıt tespiti aynı listeyi kullanır.
+  // Destedeki tüm kart kimlikleri: tekrar sayacı, yeni kayıt tespiti ve "kayıt" listesi aynı listeden.
   // Fiil kimliği de `v:` önekli (SRS anahtarı `v:<id>:<form>`) — öneksiz hâlde `describe()`
   // fiili çözemiyor ve popup satırı boş kalıyordu.
-  const allIds = useMemo(
-    () => [
-      ...words.map((w) => w.id),
-      ...connectives.map((c) => `c:${c.id}`),
-      ...verbs.map((v) => `v:${v.id}`),
-    ],
-    [],
-  );
+  const allIds = useMemo(() => DECK_GROUPS.flatMap((g) => g.ids), []);
 
   // Eşitleme/açılışta deste büyümüşse (yeni ders notları içe aktarıldı) haber ver: bir kez.
   useEffect(() => {
@@ -262,7 +282,14 @@ export default function App() {
                   e.target.value = "";
                 }}
               />
-              <span className="ml-auto">{total} kayıt</span>
+              <button
+                type="button"
+                data-testid="deck-open"
+                onClick={() => deckDialog.current?.showModal()}
+                className="ml-auto underline"
+              >
+                {total} kayıt
+              </button>
             </div>
 
             {/* Kaynak listesi popup: dosyalar obsidian:// bağlantısı (kasa "emre").
@@ -306,15 +333,9 @@ export default function App() {
                 Son açılıştan bu yana desteye eklenenler (yeni ders notları):
               </p>
               <ul className="mt-3 flex max-h-[45vh] flex-col gap-1 overflow-y-auto text-sm">
-                {newItems.slice(0, NEW_ITEMS_SHOWN).map((id) => {
-                  const info = describe(id);
-                  return info ? (
-                    <li key={id}>
-                      <span className="font-semibold">{info.nl}</span>{" "}
-                      <span className="text-inksoft">— {info.tr}</span>
-                    </li>
-                  ) : null;
-                })}
+                {newItems.slice(0, NEW_ITEMS_SHOWN).map((id) => (
+                  <RecordRow key={id} id={id} />
+                ))}
               </ul>
               {newItems.length > NEW_ITEMS_SHOWN ? (
                 <p className="mt-2 text-xs text-inksoft">
@@ -323,6 +344,37 @@ export default function App() {
               ) : null}
               <div className="mt-4 flex justify-end">
                 <BigButton onClick={() => newItemsDialog.current?.close()}>Tamam</BigButton>
+              </div>
+            </dialog>
+
+            {/* Deste listesi: sağ alttaki "N kayıt" düğmesi tüm kayıtları gösterir (gruplu).
+                Aynı <dialog> kalıbı; satırlar RecordRow ile yeni kayıt popup'ıyla aynı biçimde. */}
+            <dialog
+              ref={deckDialog}
+              data-testid="deck"
+              className="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
+            >
+              <h2 className="font-display text-lg font-semibold">📚 {total} kayıt</h2>
+              <p className="mt-1 text-xs text-inksoft">
+                Ders notlarından üretilen destenin tamamı. Kelimeler sözlük sırası, fiiller çekim
+                dizisi (inf · vt · vt_mv · voltooid) ile listelenir.
+              </p>
+              <ul className="mt-3 flex max-h-[55vh] flex-col gap-3 overflow-y-auto text-sm">
+                {DECK_GROUPS.map((g) => (
+                  <li key={g.ad} data-testid={`deck-group-${g.ad.toLowerCase()}`}>
+                    <h3 className="sticky top-0 bg-surface text-xs font-semibold text-inksoft">
+                      {g.icon} {g.ad} · {g.ids.length}
+                    </h3>
+                    <ul className="mt-1 flex flex-col gap-1">
+                      {g.ids.map((id) => (
+                        <RecordRow key={id} id={id} />
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex justify-end">
+                <BigButton onClick={() => deckDialog.current?.close()}>Kapat</BigButton>
               </div>
             </dialog>
           </section>

@@ -8,7 +8,9 @@ okumo.dev'in dilini ödünç alır: krem zemin + terracotta aksan, Fraunces/Nuni
 "cozy" kartlar; tekrar planı SM-2'den sadeleştirilmiştir. Ana sayfada son 30 günün XP grafiği
 (recharts) ve yıllık tekrar takvimi (react-activity-calendar) vardır; alttaki **📄 Veri kaynakları**
 popup'ı, verinin üretildiği ders notlarını `obsidian://` bağlantısıyla açar. Yeni ders notları içe
-aktarıldığında desteye eklenen kayıtlar açılışta **🆕 yeni kayıt popup'ı** ile bir kez haber verilir.
+aktarıldığında desteye eklenen kayıtlar açılışta **🆕 yeni kayıt popup'ı** ile bir kez haber verilir;
+alttaki **kalıcı "N kayıt"** düğmesi ise destenin **tamamını** popup'ta listeler (kelime/bağlaç/fiil
+gruplu, alfabetik).
 
 ---
 
@@ -243,7 +245,8 @@ yatay kaymıyor, chip'ler tek satır ve ekran içinde, başlık ≥60 px görün
   düzeltilir (bullet → tablo satırı) ya da bilinçli olarak notta bırakıldığı kabul edilir; sessizce
   yok sayılmaz. Örnek: `verloren` maddesi 4 parçalı olduğu için uygulamaya hiç girmiyordu (23.09.2026'da
   tablo satırına çevrildi, 85 → 86 kayıt).
-- Güncel veri: **86 kelime/ifade · 9 bağlaç · 215 fiil** (eksik alan: 0, atlanan içerik: 2 dipnot).
+- Güncel veri: **111 kelime/ifade · 9 bağlaç · 215 fiil** (toplam 335 kayıt; eksik alan: 0,
+  atlanan içerik: 2 dipnot).
 - **Kaynak popup'ı:** ana sayfanın altındaki "📄 Veri kaynakları (3)" düğmesi yerleşik `<dialog>`
   (`showModal()`) açar; her satır notu Obsidian'da açar (`obsidian://open?vault=emre&file=…`), yanında
   o nottan üretilen kayıt sayısı yazar. Kaynak listesi büyüdükçe sayfa uzamasın diye liste artık
@@ -313,6 +316,20 @@ daha"). Sunucu gerekmez: ağ yokken de çalışır, çünkü kaynak `src/data/*.
   sayfayı yeniler: popup açılır, "Tamam" kapatır, ikinci açılışta çıkmaz). Salt okunur — ilerlemeye
   dokunmaz.
 
+### Deste listesi popup'ı (tüm kayıtlar)
+
+Ana sayfanın altındaki **"N kayıt"** düğmesi (eskiden düz metindi) destenin tamamını yerleşik
+`<dialog>` içinde gösterir: 📖 Kelimeler · 🔗 Bağlaçlar · 🔄 Fiiller, her grup alfabetik (fiiller
+`inf · vt · vt_mv · voltooid` dizisiyle), satırlar yeni kayıt popup'ıyla aynı biçimde (`NL — TR`).
+
+- Tek kaynak: `DECK_GROUPS` (App.tsx) — kelime/bağlaç/fiil kimlikleri **oradan** üretilir; `allIds`
+  (tekrar sayacı + yeni kayıt tespiti) da bu listenin düzleştirilmiş hâlidir, ayrıca tekrarlanmaz.
+  Yeni grup türü (örn. deyimler) eklemek = `DECK_GROUPS`'a bir satır.
+- Kart sırası önemsiz (damga farkı küme); liste yalnız okunur, oyun akışına dokunmaz.
+- Doğrulama: `python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py [adres]` — düğme metni =
+  popup başlığı = grup satır toplamı (şu an 335 = 111+9+215), bilinen kayıt listede, "Kapat" ve ESC
+  kapatıyor, 375 px'te taşma yok. Salt okunur.
+
 ---
 
 ## 6) Servis ve altyapı
@@ -342,6 +359,7 @@ python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375
 python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # kaynak popup'ı + obsidian bağlantıları
 python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # tekrar takvimi en sağda (bugün) açılıyor mu
 python3 ~/.hermes/cache/scratch/okumo_new_items_check.py             # yeni kayıt popup'ı: sessiz ilk açılış, 4 yeni kelime
+python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py            # "N kayıt" düğmesi → tüm deste popup'ı (335 = 111+9+215)
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
 ```
