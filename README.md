@@ -146,7 +146,7 @@ vault name is the folder name).
 
 | Mode | What it does | SRS key |
 |---|---|---|
-| 🃏 **Matching** | Five Dutch cards on the left (word + example sentence below), five cards on the right (priority-language meaning, secondary meaning underneath). Tap to match; a wrong pair shakes red, matched pairs disappear. | `w.id` |
+| 🃏 **Matching** | Five Dutch cards on the left (word + example sentence below), five cards on the right (priority-language meaning, secondary meaning underneath). Tap to match; a right pair chimes and locks, a wrong pair shakes red and buzzes. | `w.id` |
 | ✅ **Multiple choice** | Four-option questions in the priority language: NL→meaning and meaning→NL (options come from other records). | `w.id` |
 | ⌨️ **Typing** | The meaning (priority language) is given, you type the Dutch. `de/het`, punctuation, case and extra whitespace are tolerated. | `w.id` |
 | 🧩 **Sentence scramble** | The sentence's **own translation** is given (`zin_tr`); shuffled Dutch word chips must be put in order (example sentences with ≥4 words). Cards without a sentence translation are skipped — the prompt must not fall back to the bare word meaning, that turned the task into a guess. | `w.id` |
@@ -164,16 +164,24 @@ Level: every 200 XP is one level.
 
 ### Press feedback (sound, haptics, shake)
 
-Every answer gets the yap.ev key feel: tone + haptics + a short shake, all **in one place**
-(`settle()`). Finishing a round plays a closing fanfare and shakes the whole page
-(`[data-feedback-root]`).
+Every answer gets the yap.ev key feel: tone + haptics + a short shake — the question games in one
+place (`settle()` in `SessionGame.tsx`), the matching game in `MatchGame.tsx`. Menus, cards, the
+popup buttons and the summary actions get the **click** tone from a single delegated `pointerdown`
+listener in `App.tsx` (sound + haptic tick only: shaking every chip made the menus look jumpy).
+Finishing a round plays a closing fanfare and shakes the whole page (`[data-feedback-root]`).
 
 | Moment | Sound | Shake |
 |---|---|---|
+| Menu / card / popup press | `click` (800 → 600 Hz) + haptic tick | — |
 | Correct | `success` (880 → 1320 Hz) | soft (6 frames / 260 ms, question card) |
 | Wrong | `error` (400 → 300 Hz) | hard (8 frames / 480 ms, question card) |
-| Round end | `finish` (523/659/784/1047 Hz arpeggio) | hard (whole page) |
+| Matching game: pair found | `success` | — |
+| Matching game: wrong pair | `error` | `animate-shake` on both tiles (CSS, 350 ms) |
+| Round end (every mode) | `finish` (523/659/784/1047 Hz arpeggio) | hard (whole page) |
 
+- **The answer area is left out of the click tone** (`[data-testid='answers']`, plus the speaker
+  button): there the same press already plays its verdict tone on the spot, and a click underneath
+  smears it. The matching tiles keep the click — tapping a Dutch card is a pick, not yet a verdict.
 - No audio files: tones are synthesised with Web Audio → **works offline**, nothing added to the bundle.
 - `src/lib/feedback.ts` has no dependencies; without Web Audio / vibration / animation APIs it does
   nothing and never throws (iOS Safari ignores vibration; sound and shake still work).
@@ -187,8 +195,8 @@ Every answer gets the yap.ev key feel: tone + haptics + a short shake, all **in 
   language app must stay dependency-free and offline, and the GitHub Actions build cannot reach the
   sibling repo; if the library is published to npm this file turns back into an import.
 - Verification: `scripts/feedback.test.ts` (unit: frame counts, cancellation, silent fallback, tone
-  frequency) + `okumo_feedback_check.py` (browser: measures that the animation starts and the tone
-  plays on a real element).
+  frequency) + `okumo_feedback_check.py` (browser: menus and cards click, matching game plays its
+  tones and the fanfare, answer presses stay free of the click tone, reduced motion keeps the sound).
 - If the sound ever gets annoying, one condition in front of the `feedbackSound` calls turns it off;
   a permanent 🔊/🔇 button would go here **and** into `ay-ui-library`'s `PressFeedback` block.
 

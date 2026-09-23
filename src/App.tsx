@@ -12,6 +12,7 @@ import {
 import MatchGame, { type GameResult } from "./games/MatchGame";
 import SessionGame from "./games/SessionGame";
 import { connectives, meta, verbs, words } from "./lib/data";
+import { feedbackSound, haptic } from "./lib/feedback";
 import { useT } from "./lib/i18n";
 import { isDue } from "./lib/srs";
 import {
@@ -131,6 +132,22 @@ export default function App() {
 
   // Sync with the server on load and whenever the connection comes back (falls back to local).
   useEffect(() => startSync(), []);
+
+  // Menus, cards and popup buttons get the yap.ev key click from one delegated listener.
+  // The answer area is excluded: there the same press already plays its own verdict tone in
+  // `settle()` (or the match game), and a click underneath would smear it.
+  useEffect(() => {
+    function onPress(e: PointerEvent) {
+      const el = (e.target as Element | null)?.closest?.(
+        "button, summary, a, input[type='checkbox']",
+      );
+      if (!el || el.closest("[data-testid='answers'], [data-testid='speak']")) return;
+      feedbackSound("click");
+      haptic();
+    }
+    document.addEventListener("pointerdown", onPress);
+    return () => document.removeEventListener("pointerdown", onPress);
+  }, []);
 
   // Every card id in the deck: review counter, new-item detection and the deck list share it.
   // Verb ids keep the `v:` prefix (SRS key `v:<id>:<form>`) — without it `describe()` could not

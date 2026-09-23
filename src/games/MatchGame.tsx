@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ProgressBar, Speak, XpBurst } from "../components/ui";
 import { words } from "../lib/data";
+import { feedbackSound, haptic } from "../lib/feedback";
 import { useT } from "../lib/i18n";
 import { pickSession, shuffle } from "../lib/srs";
 import { getProgress } from "../lib/store";
@@ -43,11 +44,17 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
       setSolved(nextSolved);
       setSelected(null);
       setBurst((b) => b + 5);
+      // Same key feel as the question games: tone + haptics on every verdict (the tiles shake
+      // through `animate-shake`, which already honours reduced motion).
+      feedbackSound("success");
+      haptic();
       if (nextSolved.length === left.length) setTimeout(() => finish(nextSolved), 450);
     } else {
       attempted.current[selected] = true;
       setErrors((e) => e + 1);
       setShake([selected, id]);
+      feedbackSound("error");
+      haptic();
       setTimeout(() => setShake([]), 350);
     }
   }
@@ -56,6 +63,8 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
     const grades: Record<string, Grade> = {};
     for (const id of done) grades[id] = attempted.current[id] ? 1 : 2;
     const xp = Math.max(5, done.length * 10 - errors * 2);
+    feedbackSound("finish");
+    haptic();
     onFinish({ grades, xp, correct: done.length, total: done.length, wrongIds: [] });
   }
 
