@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "lint": "biome check src scripts",
+    "lint:fix": "biome check --write src scripts",
     "import": "bun scripts/import-notes.mjs",
     "check": "bun test",
     "test": "bun test",
@@ -14,9 +16,12 @@
   },
   "dependencies": {
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-activity-calendar": "^3.2.1",
+    "react-dom": "^19.1.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
     "@tailwindcss/vite": "^4.1.13",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",

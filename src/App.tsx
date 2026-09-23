@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityHeat, XpChart } from "./components/History";
 import { BigButton, CozyCard, Pill, ProgressBar, TopBar } from "./components/ui";
 import MatchGame, { type GameResult } from "./games/MatchGame";
 import SessionGame from "./games/SessionGame";
@@ -29,8 +30,18 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
     title: "Eşleştirme",
     desc: "Solda Hollandaca + örnek cümle, sağda İngilizce + Türkçe. 5 çift.",
   },
-  { id: "choice", icon: "✅", title: "Çoktan seçmeli", desc: "NL→TR, NL→EN ve TR→NL yönlerinde 4 şıklı sorular." },
-  { id: "type", icon: "⌨️", title: "Yazma", desc: "Türkçesi/İngilizcesi verilir, Hollandacasını yazarsın." },
+  {
+    id: "choice",
+    icon: "✅",
+    title: "Çoktan seçmeli",
+    desc: "NL→TR, NL→EN ve TR→NL yönlerinde 4 şıklı sorular.",
+  },
+  {
+    id: "type",
+    icon: "⌨️",
+    title: "Yazma",
+    desc: "Türkçesi/İngilizcesi verilir, Hollandacasını yazarsın.",
+  },
   {
     id: "scramble",
     icon: "🧩",
@@ -44,7 +55,12 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
     desc: "Bu haftanın bağlaçları: cümle içinde boşluğu doldur, anlamını pekiştir.",
     tag: "bu hafta",
   },
-  { id: "verbs", icon: "🔄", title: "Fiil çekimi", desc: "215 düzensiz fiil, ses kalıbı ailelerine göre çekim alıştırması." },
+  {
+    id: "verbs",
+    icon: "🔄",
+    title: "Fiil çekimi",
+    desc: "215 düzensiz fiil, ses kalıbı ailelerine göre çekim alıştırması.",
+  },
 ];
 
 function describe(id: string): { nl: string; tr: string } | null {
@@ -133,8 +149,8 @@ export default function App() {
                 Hollandaca alıştırma
               </h1>
               <p className="mt-2 text-inksoft">
-                Sınıf notlarından üretilmiş {words.length} kelime/ifade, {connectives.length} bağlaç ve{" "}
-                {verbs.length} fiil. Bugün tekrar edilecek kart: <strong>{dueCount}</strong>
+                Sınıf notlarından üretilmiş {words.length} kelime/ifade, {connectives.length} bağlaç
+                ve {verbs.length} fiil. Bugün tekrar edilecek kart: <strong>{dueCount}</strong>
               </p>
             </div>
 
@@ -150,9 +166,17 @@ export default function App() {
               </div>
             </CozyCard>
 
+            <XpChart daily={progress.daily} />
+            <ActivityHeat daily={progress.daily} />
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {MODES.map((mode) => (
-                <CozyCard key={mode.id} as="button" onClick={() => startGame(mode.id)} className="flex flex-col gap-2">
+                <CozyCard
+                  key={mode.id}
+                  as="button"
+                  onClick={() => startGame(mode.id)}
+                  className="flex flex-col gap-2"
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-2xl" aria-hidden="true">
                       {mode.icon}
@@ -174,8 +198,8 @@ export default function App() {
                 ✏️ Notlarımda eksik/hatalı olup doldurulan {reviewable.length} kayıt
               </summary>
               <p className="mt-2 text-sm text-inksoft">
-                Bunlar ders notlarında çevirisi/örneği boş ya da yazımı hatalı olan kayıtlar; uygulamada
-                kullanılabilmeleri için tamamlandı. Notların kendisine dokunulmadı.
+                Bunlar ders notlarında çevirisi/örneği boş ya da yazımı hatalı olan kayıtlar;
+                uygulamada kullanılabilmeleri için tamamlandı. Notların kendisine dokunulmadı.
               </p>
               <ul className="mt-3 flex flex-col gap-1 text-sm">
                 {reviewable.map((w) => (
@@ -190,18 +214,27 @@ export default function App() {
 
             <div className="flex flex-wrap items-center gap-3 text-sm text-inksoft">
               <span>
-                Veri: {meta.sources.map((s) => `${s.file.replace(" Hollandaca dil kursu.md", "")}`).join(", ")}
+                Veri:{" "}
+                {meta.sources
+                  .map((s) => `${s.file.replace(" Hollandaca dil kursu.md", "")}`)
+                  .join(", ")}
               </span>
               <button type="button" onClick={downloadProgress} className="underline">
                 İlerlemeyi indir
               </button>
-              <button type="button" onClick={() => fileInput.current?.click()} className="underline">
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                className="underline"
+              >
                 İçe aktar
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Tüm ilerleme (XP, seri, tekrar kartları) sıfırlanacak. Emin misin?")) {
+                  if (
+                    confirm("Tüm ilerleme (XP, seri, tekrar kartları) sıfırlanacak. Emin misin?")
+                  ) {
                     resetProgress();
                   }
                 }}

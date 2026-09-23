@@ -4,6 +4,17 @@ import type { CardState, Progress } from "./types";
 
 const emptyCards = (): Record<string, CardState> => ({});
 
+/**
+ * Gün başına XP birleşimi: gün başına EN BÜYÜK değer kazanır (XP sayacıyla aynı kural).
+ * ponytail: tavan — iki cihazın aynı gün kazandığı XP toplanmaz, çift saymak yerine eksik sayar.
+ * Cihaz başına ayrım gerekirse kayda cihaz kimliği eklenmeli; o zaman toplam gün bazında alınır.
+ */
+function mergeDaily(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
+  const merged: Record<string, number> = { ...a };
+  for (const [day, xp] of Object.entries(b ?? {})) merged[day] = Math.max(merged[day] ?? 0, xp);
+  return merged;
+}
+
 export function mergeProgress(local: Progress, remote: Progress): Progress {
   const cards = emptyCards();
   for (const id of new Set([...Object.keys(local.cards), ...Object.keys(remote.cards)])) {
@@ -23,6 +34,7 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     bestStreak: Math.max(local.bestStreak, remote.bestStreak),
     sessions: Math.max(local.sessions, remote.sessions),
     daysPlayed: [...new Set([...local.daysPlayed, ...remote.daysPlayed])].sort(),
+    daily: mergeDaily(local.daily ?? {}, remote.daily ?? {}),
     streak: newer.streak || older.streak,
     lastDay: newer.lastDay ?? older.lastDay ?? null,
     updatedAt: Math.max(local.updatedAt ?? 0, remote.updatedAt ?? 0),
@@ -45,6 +57,16 @@ export function isValidProgress(value: unknown): value is Progress {
   );
 }
 
+/** Günlük XP kaydını temizler: sayı olmayan, sonsuz ya da negatif girdiler atılır. */
+function sanitizeDaily(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, number> = {};
+  for (const [day, xp] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof xp === "number" && Number.isFinite(xp) && xp > 0) out[day] = xp;
+  }
+  return out;
+}
+
 /** Eksik alanlı eski/bozuk kayıtları oynanabilir hale getirir. */
 export function normalizeProgress(value: unknown): Progress | null {
   if (!isValidProgress(value)) return null;
@@ -56,6 +78,7 @@ export function normalizeProgress(value: unknown): Progress | null {
     bestStreak: value.bestStreak ?? value.streak,
     lastDay: value.lastDay ?? null,
     daysPlayed: value.daysPlayed,
+    daily: sanitizeDaily(value.daily),
     sessions: value.sessions ?? 0,
     updatedAt: value.updatedAt ?? 0,
   };

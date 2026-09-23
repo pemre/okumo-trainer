@@ -18,6 +18,7 @@ const empty = (): Progress => ({
   bestStreak: 0,
   lastDay: null,
   daysPlayed: [],
+  daily: {},
   sessions: 0,
   updatedAt: 0,
 });
@@ -149,7 +150,11 @@ export function recordSession(grades: Record<string, Grade>, xpGained: number, n
     streak,
     bestStreak: Math.max(current.bestStreak, streak),
     lastDay: today,
-    daysPlayed: current.daysPlayed.includes(today) ? current.daysPlayed : [...current.daysPlayed, today],
+    daysPlayed: current.daysPlayed.includes(today)
+      ? current.daysPlayed
+      : [...current.daysPlayed, today],
+    // Grafik ve ısı haritası için gün başına XP (turun XP'si +2 olabilir, o yüzden toplanır).
+    daily: { ...current.daily, [today]: (current.daily[today] ?? 0) + xpGained },
     sessions: current.sessions + 1,
   });
 }

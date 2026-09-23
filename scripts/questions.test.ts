@@ -3,13 +3,16 @@
 // tarayıcı duman testi ise düğme tarafını korur; ikisi birlikte regresyonu yakalar.)
 import { describe, expect, test } from "bun:test";
 import { buildQuestions } from "../src/games/questions";
-import { checkAnswer, checkTyped } from "../src/lib/srs";
+import { checkAnswer } from "../src/lib/srs";
 import type { ModeId } from "../src/lib/types";
 
 const MODES: ModeId[] = ["choice", "type", "scramble", "connect", "verbs"];
 const SIZE = 10;
 /** Arayüzün kullandığı kuralın aynısı: asıl cevap + alternatifler. */
-const accepted = (answer: string, alternatives: string[] | undefined) => [answer, ...(alternatives ?? [])];
+const accepted = (answer: string, alternatives: string[] | undefined) => [
+  answer,
+  ...(alternatives ?? []),
+];
 
 describe("soru üretimi", () => {
   for (const mode of MODES) {
@@ -26,9 +29,15 @@ describe("soru üretimi", () => {
         expect(q.answer.trim().length, `${mode} / ${q.id} cevapsız`).toBeGreaterThan(0);
         const acceptedInputs = accepted(q.answer, q.alternatives);
         for (const input of acceptedInputs) {
-          expect(checkAnswer(input, acceptedInputs), `${mode} / ${q.id} kabul edilmiyor: ${input}`).toBe(true);
+          expect(
+            checkAnswer(input, acceptedInputs),
+            `${mode} / ${q.id} kabul edilmiyor: ${input}`,
+          ).toBe(true);
         }
-        expect(checkAnswer("zzzz", acceptedInputs), `${mode} / ${q.id} yanlış cevabı kabul etti`).toBe(false);
+        expect(
+          checkAnswer("zzzz", acceptedInputs),
+          `${mode} / ${q.id} yanlış cevabı kabul etti`,
+        ).toBe(false);
       }
     });
   }

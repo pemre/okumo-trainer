@@ -1,6 +1,6 @@
+import { connectives, verbs, words } from "../lib/data";
 import { buildOptions, pickSession, shuffle } from "../lib/srs";
 import type { CardState, Connective, ModeId, Verb, WordItem } from "../lib/types";
-import { connectives, verbs, words } from "../lib/data";
 
 export interface Question {
   id: string; // SRS kart anahtarı
@@ -23,7 +23,10 @@ const blankSentence = (zin: string, nl: string) => {
     if (re.test(zin)) return zin.replace(re, "____");
   }
   const first = nl.split(" ")[0];
-  return zin.replace(new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), "____");
+  return zin.replace(
+    new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"),
+    "____",
+  );
 };
 
 const wordDetail = (w: WordItem) => ({
@@ -55,7 +58,10 @@ function typeQuestion(item: WordItem, direction: "tr-nl" | "en-nl"): Question {
     id: item.id,
     kind: "type",
     prompt: direction === "tr-nl" ? item.tr : item.en,
-    promptSub: direction === "tr-nl" ? "(Türkçesi) — Hollandacasını yaz" : "(İngilizcesi) — Hollandacasını yaz",
+    promptSub:
+      direction === "tr-nl"
+        ? "(Türkçesi) — Hollandacasını yaz"
+        : "(İngilizcesi) — Hollandacasını yaz",
     answer: item.nl,
     alternatives: item.synoniem ? [item.synoniem] : undefined,
     detail: wordDetail(item),
@@ -64,7 +70,9 @@ function typeQuestion(item: WordItem, direction: "tr-nl" | "en-nl"): Question {
 
 function connectiveQuestion(connective: Connective, kind: "choice" | "type"): Question {
   const blanked = blankSentence(connective.zin, connective.nl);
-  const distractors = shuffle(connectives.filter((c) => c.id !== connective.id).map((c) => c.nl)).slice(0, 3);
+  const distractors = shuffle(
+    connectives.filter((c) => c.id !== connective.id).map((c) => c.nl),
+  ).slice(0, 3);
   const options = kind === "choice" ? shuffle([connective.nl, ...distractors]) : undefined;
   return {
     id: `c:${connective.id}`,
@@ -101,7 +109,8 @@ function verbQuestion(verb: Verb, form: VerbForm): Question {
     promptSub: labels[form],
     hint: verb.familie_adi,
     answer,
-    alternatives: form === "voltooid" ? [answer.replace(/^(hebben|heeft|is|zijn)\s+/, "")] : undefined,
+    alternatives:
+      form === "voltooid" ? [answer.replace(/^(hebben|heeft|is|zijn)\s+/, "")] : undefined,
     detail: {
       nl: `${verb.inf} · ${verb.vt} · ${verb.vt_mv} · ${verb.voltooid}`,
       en: verb.en,

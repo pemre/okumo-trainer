@@ -1,7 +1,8 @@
 // Klas notlarını (Obsidian markdown) + fiil listesini uygulamanın okuduğu JSON'a çevirir.
 // Kullanım: bun scripts/import-notes.mjs   (notlar SADECE okunur, asla yazılmaz)
-import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
+
 import { existsSync } from "node:fs";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dir, "..");
@@ -11,7 +12,11 @@ const SOURCE_DIR = path.join(ROOT, "data-source");
 const OUT_DIR = path.join(ROOT, "src", "data");
 
 const TURKISH_HINT = /[çğıöşü]/i;
-const norm = (s) => s.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
+const norm = (s) =>
+  s
+    .toLowerCase()
+    .replace(/[.,!?;:]+$/g, "")
+    .trim();
 
 const clean = (s) =>
   s
@@ -24,7 +29,10 @@ const clean = (s) =>
 
 // "komend (komınd)" → "komend" ; "m.a.w." gibi kısaltma parantezleri korunur
 const stripParen = (s) =>
-  s.replace(/\s*\(([^)]*)\)/g, (m, g) => (g.includes(".") ? m : "")).replace(/\s+/g, " ").trim();
+  s
+    .replace(/\s*\(([^)]*)\)/g, (m, g) => (g.includes(".") ? m : ""))
+    .replace(/\s+/g, " ")
+    .trim();
 
 const cells = (line) =>
   line
@@ -83,18 +91,20 @@ function tableRowToItem(row, map) {
   return item;
 }
 
-const NL_LIKE = /\b(de|het|een|ik|je|hij|zij|wij|niet|is|zijn|heb|hebt|heeft|moet|kan|kun|wil|ga|kom|dat|die|om|en|maar)\b/i;
+const NL_LIKE =
+  /\b(de|het|een|ik|je|hij|zij|wij|niet|is|zijn|heb|hebt|heeft|moet|kan|kun|wil|ga|kom|dat|die|om|en|maar)\b/i;
 
 function parseBullet(bodyRaw, out) {
   const body = clean(bodyRaw);
   if (body.includes("(")) return; // dipnot/açıklama maddesi
-  const parts = body.split(/\s+[—–]\s+|\s+-\s+/).map((p) => p.trim()).filter(Boolean);
+  const parts = body
+    .split(/\s+[—–]\s+|\s+-\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   if (parts.length < 2 || parts.length > 3) return;
   const [nlRaw, second, third] = parts;
   const quoted = /^["“]/.test(nlRaw);
-  const nl = quoted
-    ? nlRaw.replace(/^["“]|["”]\.?$/g, "").trim()
-    : nlRaw.replace(/\.$/, "").trim();
+  const nl = quoted ? nlRaw.replace(/^["“]|["”]\.?$/g, "").trim() : nlRaw.replace(/\.$/, "").trim();
   const item = { nl, en: "", tr: "", zin: "", zin_tr: "", synoniem: "" };
   if (TURKISH_HINT.test(second)) item.tr = second;
   else item.en = second;
@@ -157,7 +167,8 @@ function mergeItems(lists) {
         byKey.set(key, it);
         continue;
       }
-      for (const f of ["en", "tr", "zin", "zin_tr", "synoniem"]) if (!prev[f] && it[f]) prev[f] = it[f];
+      for (const f of ["en", "tr", "zin", "zin_tr", "synoniem"])
+        if (!prev[f] && it[f]) prev[f] = it[f];
     }
   }
   return [...byKey.values()];
@@ -175,11 +186,11 @@ function parseCsv(text) {
       else if (ch === '"') quoted = false;
       else field += ch;
     } else if (ch === '"') quoted = true;
-    else if (ch === ",") (row.push(field), (field = ""));
-    else if (ch === "\n") (row.push(field), rows.push(row), (row = []), (field = ""));
+    else if (ch === ",") row.push(field), (field = "");
+    else if (ch === "\n") row.push(field), rows.push(row), (row = []), (field = "");
     else if (ch !== "\r") field += ch;
   }
-  if (field || row.length) (row.push(field), rows.push(row));
+  if (field || row.length) row.push(field), rows.push(row);
   return rows.filter((r) => r.some((c) => c.trim()));
 }
 
@@ -212,7 +223,9 @@ async function main() {
       const ov = overrides[norm(it.nl)] || {};
       const nl = ov.nl || it.nl;
       const merged = {
-        id: norm(nl).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+        id: norm(nl)
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, ""),
         nl,
         en: ov.en || it.en || "",
         tr: ov.tr || it.tr || "",
@@ -254,7 +267,8 @@ async function main() {
 
   await mkdir(OUT_DIR, { recursive: true });
   const meta = { generated: new Date().toISOString(), notesDir: NOTES_DIR, sources };
-  const write = (name, data) => writeFile(path.join(OUT_DIR, name), `${JSON.stringify(data, null, 1)}\n`);
+  const write = (name, data) =>
+    writeFile(path.join(OUT_DIR, name), `${JSON.stringify(data, null, 1)}\n`);
   await write("woorden.json", { meta, items });
   await write("connectieven.json", { meta, items: connectieven });
   await write("werkwoorden.json", { meta, items: werkwoorden });
@@ -262,7 +276,9 @@ async function main() {
   const eksik = items.filter((i) => i.eksik.length);
   const auto = items.filter((i) => i.auto);
   console.log(`kaynak       : ${sources.map((s) => `${s.file}=${s.items}`).join(", ")}`);
-  console.log(`kelime/ifade : ${items.length}  (auto doldurulmuş: ${auto.length}, hâlâ eksik: ${eksik.length})`);
+  console.log(
+    `kelime/ifade : ${items.length}  (auto doldurulmuş: ${auto.length}, hâlâ eksik: ${eksik.length})`,
+  );
   console.log(`bağlaç       : ${connectieven.length}   fiil: ${werkwoorden.length}`);
   if (eksik.length) console.log(eksik.map((e) => `${e.nl}[${e.eksik}]`).join(" | "));
 }

@@ -5,7 +5,8 @@ Hollandaca alıştırma uygulaması: **sınıf notlarından üretilmiş kelime/i
 `http://dil.ev/` üzerinden erişilir, çevrimdışıyken de oynanır.
 
 okumo.dev'in dilini ödünç alır: krem zemin + terracotta aksan, Fraunces/Nunito Sans, yuvarlak
-"cozy" kartlar; tekrar planı SM-2'den sadeleştirilmiştir.
+"cozy" kartlar; tekrar planı SM-2'den sadeleştirilmiştir. Ana sayfada son 30 günün XP grafiği
+(recharts) ve yıllık tekrar takvimi (react-activity-calendar) vardır.
 
 ---
 
@@ -28,6 +29,7 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 | Tetikleyici | Beklenen davranış |
 |---|---|
 | Yeni oyun modu | `src/games/questions.ts`'e soru üretici + `App.tsx` MODES kartı + README "Oyun modları" satırı + `scripts/questions.test.ts`'e kapsam testi |
+| Yeni görsel/grafik bileşeni | `src/components/History.tsx` + hesap `src/lib/history.ts`'te (saf) + `scripts/history.test.ts` + README "Grafik ve takvim" |
 | Yeni etkileşim öğesi (düğme, çip, form) | Tarayıcı duman testinde **tıklanarak** doğrulanır, sadece klavye (Enter) ile geçilmez — `BigButton` `type="button"`'dır, formu kendiliğinden göndermez |
 | Ses/titreşim/titreme davranışı | `src/lib/feedback.ts` + `scripts/feedback.test.ts` + README "Bas geri bildirimi"; kanonik sürüm kardeş depo `ay-ui-library`'deki `PressFeedback` bloğu — ikisi aynı commit'te uyumlu tutulur |
 | Veri şeması değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + README "Veri kuralları" birlikte değişir |
@@ -56,7 +58,8 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 37 test: bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme
+bun test            # 45 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme
+bun run lint        # biome: lint + format kontrolü (8 uyarı tolere edilir, hata yok)
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
 bun run build       # dist/
@@ -85,16 +88,19 @@ okumo-trainer/
 │   ├── data.test.ts        # üretilen verinin sözleşmeleri
 │   ├── questions.test.ts   # soru üreticileri: her mod soru üretir, her cevap kabul kuralından geçer
 │   ├── feedback.test.ts    # bas geri bildirimi: titreme kareleri, iptal, sessiz geri düşüş, ton frekansı
+│   ├── history.test.ts     # günlük seri: eksik gün, yaz saati geçişi, seviye eşikleri, ortalama
 │   └── sync.test.ts        # iki cihazın ilerlemesini birleştirme kuralları
 ├── src/
 │   ├── App.tsx             # ana sayfa (mod kartları, XP/seri, eşitleme durumu) + tur özeti
 │   ├── components/ui.tsx   # CozyCard, Pill, BigButton, ProgressBar, TopBar
+│   ├── components/History.tsx # XpChart (recharts) + ActivityHeat (react-activity-calendar)
 │   ├── lib/
 │   │   ├── types.ts        # WordItem, Connective, Verb, CardState, Progress, ModeId
 │   │   ├── data.ts         # üretilmiş JSON'ları içe alır
 │   │   ├── srs.ts          # SM-2 sadeleştirmesi: review(), checkTyped(), pickSession()
 │   │   ├── sync.ts         # mergeProgress(), normalizeProgress() — saf fonksiyonlar
 │   │   ├── feedback.ts     # bas geri bildirimi: Web Audio tonları, titreşim, WAAPI titreme
+│   │   ├── history.ts      # günlük XP serisi: eksik gün doldurma, seviye eşikleri, hareketli ortalama
 │   │   └── store.ts        # localStorage + sunucu eşitlemesi, XP/seri, React hook'ları
 │   ├── games/
 │   │   ├── questions.ts    # moda göre soru üreticileri
@@ -102,6 +108,7 @@ okumo-trainer/
 │   │   └── SessionGame.tsx # choice / type / scramble / connect / verbs turları
 │   └── data/*.json         # ÜRETİLMİŞ veri (repoda durur, CI'da notlar yok)
 ├── server.mjs              # dist servisi + /api/progress (bağımlılıksız HTTP sunucu)
+├── biome.json              # lint + format (2 boşluk, çift tırnak, 100 kolon)
 └── .github/workflows/      # ci.yml · deploy.yml · pages-preview.yml
 ```
 
@@ -162,6 +169,30 @@ kısa titreme. Tur bitince bitiş fanfarı çalar ve tüm sayfa titrer (`[data-f
 
 ---
 
+### Günlük XP grafiği ve tekrar takvimi
+
+Ana sayfada iki görsel var; ikisi de `Progress.daily` (gün → o gün kazanılan XP) serisinden beslenir:
+
+| Bileşen | Ne gösterir | Kaynak |
+|---|---|---|
+| `XpChart` (recharts `ComposedChart`) | Son 30 gün: günlük XP çubuğu (seviyeye göre renk) + 7 günlük ortalama çizgisi | `src/components/History.tsx` |
+| `ActivityHeat` (react-activity-calendar v3) | 52 haftalık kareler; `count` = o günün XP'si, `level` 0-4 | aynı dosya |
+
+- Seviye eşikleri: 30/60/90/120 XP → 1/2/3/4 (`levelFor`, `src/lib/history.ts`). Boş gün 0 (krem).
+- Seri üretimi saf fonksiyondur: eksik günler 0 ile dolar, tarihler takvim günü üzerinden yürünür
+  (`addDays`) — milisaniye çıkarma yaz saati geçişinde günü kaydırırdı. Test: `scripts/history.test.ts`.
+- Grafik/takvim yalnız **yerel** veriyi çizer; sunucu yoksa da çalışır (çevrimdışı ilkesiyle uyumlu).
+- Doğrulama: `scripts/history.test.ts` (birim) + `okumo_history_check.py` (tarayıcı: boş ilerlemede
+  kareler çizilir ama dolu gün yok; bir tur sonrası çubuk ve dolu kare oluşur, "henüz kayıt yok" kalkar).
+- react-activity-calendar v3 iki şeyi zorunlu tutar: `{date, count, level}` alanları ve bir `theme`
+  (varsayılan tema gri). İkisi de `History.tsx` içinde ayarlıdır.
+- Bu iki bağımlılık paketi büyütür (ham 792 KB / gzip 235 KB; öncesi 323 KB / 94 KB, yani ≈ +140 KB
+  gzip). Kişisel + çevrimdışı kullanımda tek seferlik indirme olduğu için kabul edildi; kod bölmeye
+  (lazy chunk) gidilmedi — gerekirse `React.lazy` ile grafik/takvim ayrı parçaya alınır.
+- `daily` alanı yalnız tur bitince yazılır (`recordSession`): aynı gün birden çok tur oynanırsa toplanır.
+
+---
+
 ## 4) Veri kuralları
 
 - Ders notları **hiçbir zaman** değiştirilmez; `import-notes.mjs` sadece okur.
@@ -188,6 +219,10 @@ doğrulamasından geçmezse 400; >512 KB reddedilir). Akış: **çek → birleş
 
 - kart kart: `at` (epoch ms) büyük olan kazanır; tek tarafta olan kart korunur,
 - `xp`, `bestStreak`, `sessions`: en büyük; `daysPlayed`: birleşim; `streak`/`lastDay`: yeni tarafın.
+- `daily` (gün → XP): **gün başına en büyük** kazanır. `ponytail:` tavanı — iki cihazın aynı gün
+  kazandığı XP toplanmaz, çift saymak yerine eksik sayar; cihaz başına ayrım gerekirse kayda cihaz
+  kimliği eklenip toplam o şekilde alınmalı. `normalizeProgress` günlük kayıttan sayı olmayan,
+  sonsuz ve negatif girdileri atar.
 
 Çevrimdışı davranış: istek başarısızsa durum `offline` olur (arayüzde 📴), oyun aynen sürer; her turdan
 sonra 1,5 sn gecikmeyle yeniden denenir ve `online` olayında tekrar eşitlenir. Statik yayında
@@ -215,13 +250,15 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 37 test / 5 dosya
+bun test               # 45 test / 6 dosya
+bun run lint           # biome check (CI'da aynı adım var)
 bunx tsc --noEmit      # tip kontrolü
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
 ```
 
-Değişiklikten sonra beklenen kanıt: testler geçer, tip kontrolü temiz, derleme çalışır, `/health`
+Değişiklikten sonra beklenen kanıt: testler geçer, `bun run lint` hata vermez, tip kontrolü temiz,
+derleme çalışır, `/health`
 yanıt verir ve oynanan modun tarayıcıdan elle doğrulanması (eşleştirme → diğer modlar → özet →
 `localStorage` yazımı). Yazmalı adımlar **iki yoldan** denenir: Enter ile gönderme ve "Kontrol et"
 düğmesine tıklama — 23.09.2026'da düğme `onClick`'siz kaldığı için yazma alıştırmaları yalnızca
@@ -244,6 +281,10 @@ scratch'te tutulur, repoya girmez.
 
 - Anlık kalan iş yok. İlerleme senkronu tek sunucu dosyası üzerinden (kişisel kullanım için yeterli;
   çok kullanıcılı olursa kilit eklenmeli).
+- Sıradaki fikirler (istenirse): rozetler (ilk tur, kusursuz tur, 7 gün seri…), günlük hatırlatma
+  cron'u (mevcut Telegram/Home Assistant becerileriyle), kusursuz turda CSS konfeti, dokunmatikte
+  görünmeyen `title=` ipuçları için tap-popover, no-JS `/liste` (Kobo/yazdırma), `mergeProgress`
+  için rastgele özellik testi.
 - Telaffuz (edge-tts) düşünüldü ama eklenmedi: çevrimdışı senaryoda internet gerektirdiği için
   önbellekli ses üretimi tasarlanmadan girmesi doğru değil.
 - Konuşma pratiği (STT) kapsam dışı.

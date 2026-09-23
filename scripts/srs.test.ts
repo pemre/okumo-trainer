@@ -84,7 +84,13 @@ describe("yazma cevabı denetimi", () => {
 describe("çoktan seçmeli şıklar", () => {
   test("doğru cevap şıkların içinde, şıklar benzersiz", () => {
     const pool = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }];
-    const opts = buildOptions(pool[0], pool, (x) => x.id, () => 0.42, 4);
+    const opts = buildOptions(
+      pool[0],
+      pool,
+      (x) => x.id,
+      () => 0.42,
+      4,
+    );
     expect(opts.length).toBe(4);
     expect(new Set(opts.map((o) => o.id)).size).toBe(4);
     expect(opts.some((o) => o.id === "a")).toBe(true);

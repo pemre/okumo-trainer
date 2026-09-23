@@ -55,6 +55,8 @@ export interface Progress {
   bestStreak: number;
   lastDay: string | null;
   daysPlayed: string[];
+  /** Gün başına kazanılan XP (YYYY-MM-DD → XP); grafik ve ısı haritası buradan beslenir. */
+  daily: Record<string, number>;
   sessions: number;
   /** Son yerel değişiklik zamanı (epoch ms). */
   updatedAt: number;

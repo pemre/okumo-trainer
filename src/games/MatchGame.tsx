@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { ProgressBar, XpBurst } from "../components/ui";
 import { words } from "../lib/data";
-import { getProgress } from "../lib/store";
 import { pickSession, shuffle } from "../lib/srs";
+import { getProgress } from "../lib/store";
 import type { Grade, WordItem } from "../lib/types";
 
 export interface GameResult {
@@ -16,10 +16,7 @@ export interface GameResult {
 const PAIRS = 5;
 
 export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => void }) {
-  const left = useMemo<WordItem[]>(
-    () => pickSession(words, getProgress().cards, PAIRS),
-    [],
-  );
+  const left = useMemo<WordItem[]>(() => pickSession(words, getProgress().cards, PAIRS), []);
   const rightOrder = useMemo(() => shuffle(left.map((w) => w.id)), [left]);
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -30,7 +27,10 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
   const [burst, setBurst] = useState(0);
 
   const locked = (id: string) => solved.includes(id);
-  const right = useMemo(() => rightOrder.map((id) => left.find((w) => w.id === id)!), [rightOrder, left]);
+  const right = useMemo(
+    () => rightOrder.map((id) => left.find((w) => w.id === id)!),
+    [rightOrder, left],
+  );
 
   function tapRight(id: string) {
     if (!selected || locked(id) || !right.length) return;

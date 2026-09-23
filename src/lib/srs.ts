@@ -141,5 +141,7 @@ export function checkTyped(input: string, expected: string): boolean {
  * Tek yerde tutulur ki arayüz ve testler ayrı kurallar yürütmesin.
  */
 export function checkAnswer(input: string, answers: (string | undefined)[]): boolean {
-  return answers.some((a): a is string => typeof a === "string" && a.trim() !== "" && checkTyped(input, a));
+  return answers.some(
+    (a): a is string => typeof a === "string" && a.trim() !== "" && checkTyped(input, a),
+  );
 }
