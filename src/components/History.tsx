@@ -14,15 +14,32 @@ import {
 } from "recharts";
 import { CHART_DAYS, calendarRows, dailySeries, movingAverage } from "../lib/history";
 import { useT } from "../lib/i18n";
+import { useDark } from "../lib/theme";
 
 // okumo.dev palette: cream background, terracotta accent. Level 0 = no activity.
-const LEVEL_FILL = ["#e7dcc4", "#e6b795", "#d98a5f", "#c14a1d", "#8f3113"];
-const AXIS = "#e3d6bd";
-const INK = "#8a7a63";
-
-// react-activity-calendar v3 requires a theme (grey by default) and takes exactly two colors;
-// the library derives the levels in between. Okumo has a cream background, so both schemes stay light.
-const CALENDAR_THEME = { light: ["#eee3cb", "#c14a1d"], dark: ["#eee3cb", "#c14a1d"] };
+// Both themes carry their own scale: these land in SVG *attributes* (`fill`, `stroke`), where a
+// `var()` would not resolve — so the colours are picked in JS from the resolved theme.
+const VISUALS = {
+  light: {
+    level: ["#e7dcc4", "#e6b795", "#d98a5f", "#c14a1d", "#8f3113"],
+    empty: "#eee3cb",
+    axis: "#e3d6bd",
+    ink: "#8a7a63",
+  },
+  dark: {
+    // Dark: the empty squares sit *above* the card background instead of glowing white.
+    level: ["#332c25", "#5a3a24", "#8d4f28", "#bb6234", "#e8734a"],
+    empty: "#332c25",
+    axis: "#3d352c",
+    ink: "#b7a58f",
+  },
+};
+// react-activity-calendar v3 requires a theme (grey by default) and takes exactly two colors; the
+// library derives the levels in between. One scale per scheme: the empty square is the level-0 colour.
+const CALENDAR_THEME = {
+  light: [VISUALS.light.empty, VISUALS.light.level[3]],
+  dark: [VISUALS.dark.empty, VISUALS.dark.level[4]],
+};
 
 // Month labels are 3-char slots: no room for two languages → the first enabled language wins.
 const MONTHS: Record<string, string[]> = {
@@ -32,6 +49,7 @@ const MONTHS: Record<string, string[]> = {
 
 export function XpChart({ daily }: { daily: Record<string, number> }) {
   const { t } = useT();
+  const v = VISUALS[useDark() ? "dark" : "light"];
   const series = dailySeries(daily, CHART_DAYS);
   const average = movingAverage(series.map((day) => day.xp));
   const data = series.map((day, i) => ({
@@ -54,30 +72,35 @@ export function XpChart({ daily }: { daily: Record<string, number> }) {
       <div className="mt-3 h-32 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-            <CartesianGrid vertical={false} stroke={AXIS} />
+            <CartesianGrid vertical={false} stroke={v.axis} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 9, fill: INK }}
+              tick={{ fontSize: 9, fill: v.ink }}
               tickLine={false}
-              axisLine={{ stroke: AXIS }}
+              axisLine={{ stroke: v.axis }}
               interval={4}
             />
             <YAxis hide domain={[0, "dataMax"]} />
             <Tooltip
-              contentStyle={{ borderRadius: 12, border: `1px solid ${AXIS}`, fontSize: 12 }}
-              labelStyle={{ color: INK }}
+              contentStyle={{
+                borderRadius: 12,
+                border: `1px solid ${v.axis}`,
+                background: "var(--color-surface)",
+                fontSize: 12,
+              }}
+              labelStyle={{ color: v.ink }}
               cursor={{ fill: "rgba(193, 74, 29, 0.06)" }}
             />
             <Bar dataKey="xp" name="XP" radius={[3, 3, 0, 0]} maxBarSize={12}>
               {data.map((day) => (
-                <Cell key={day.date} fill={LEVEL_FILL[day.level]} />
+                <Cell key={day.date} fill={v.level[day.level]} />
               ))}
             </Bar>
             <Line
               type="monotone"
               dataKey="avg"
               name={t("7 günlük ortalama")}
-              stroke={INK}
+              stroke={v.ink}
               strokeWidth={2}
               dot={false}
             />
@@ -90,6 +113,7 @@ export function XpChart({ daily }: { daily: Record<string, number> }) {
 
 export function ActivityHeat({ daily }: { daily: Record<string, number> }) {
   const { t, langs } = useT();
+  const dark = useDark();
   const data = calendarRows(daily);
 
   return (
@@ -115,7 +139,7 @@ export function ActivityHeat({ daily }: { daily: Record<string, number> }) {
           blockSize={9}
           blockMargin={3}
           weekStart={1}
-          colorScheme="light"
+          colorScheme={dark ? "dark" : "light"}
           labels={{ months: MONTHS[langs[0]] ?? MONTHS.tr }}
           theme={CALENDAR_THEME}
           showTotalCount={false}

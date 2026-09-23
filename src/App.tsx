@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityHeat, XpChart } from "./components/History";
-import { BigButton, CozyCard, LangMenu, Pill, ProgressBar, TopBar } from "./components/ui";
+import {
+  BigButton,
+  CozyCard,
+  Pill,
+  ProgressBar,
+  SettingsMenu,
+  Speak,
+  TopBar,
+} from "./components/ui";
 import MatchGame, { type GameResult } from "./games/MatchGame";
 import SessionGame from "./games/SessionGame";
 import { connectives, meta, verbs, words } from "./lib/data";
@@ -88,7 +96,8 @@ function RecordRow({ id }: { id: string }) {
   if (!info) return null;
   return (
     <li>
-      <span className="font-semibold">{info.nl}</span>{" "}
+      <span className="font-semibold">{info.nl}</span>
+      <Speak text={info.nl} />
       <span className="text-inksoft">— {ceviri(info)}</span>
     </li>
   );
@@ -186,7 +195,9 @@ export default function App() {
           <>
             <Pill title={t("Seri (üst üste oynanan gün)")}>🔥 {progress.streak}</Pill>
             <Pill title={t("Toplam XP")}>⭐ {progress.xp}</Pill>
-            <Pill title={t("Seviye {n} · {xp} XP", { n: level, xp: progress.xp })}>Sv {level}</Pill>
+            <Pill title={t("Seviye {n} · {xp} XP", { n: level, xp: progress.xp })}>
+              {t("Sv {n}", { n: level })}
+            </Pill>
             <Pill
               title={
                 sync === "synced"
@@ -200,7 +211,7 @@ export default function App() {
             >
               {sync === "synced" ? "☁️" : sync === "offline" ? "📴" : "💾"}
             </Pill>
-            <LangMenu />
+            <SettingsMenu />
           </>
         }
       />

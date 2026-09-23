@@ -147,6 +147,15 @@ const EN: Record<string, string> = {
   "İşlev: {f}": "Function: {f}",
   "Boşluğa uygun bağlacı getir": "Put the right connective in the gap",
   "Kelimeleri doğru sıraya koy": "Put the words in the right order",
+
+  // --- settings menu ---
+  Ayarlar: "Settings",
+  Tema: "Theme",
+  Sistem: "System",
+  Açık: "Light",
+  Koyu: "Dark",
+  "Sesli oku": "Read aloud",
+  "Sv {n}": "Lv {n}",
 };
 
 const KEY = "okumo-trainer/langs";
@@ -162,7 +171,7 @@ function load(): Lang[] {
   } catch {
     /* corrupt record or no localStorage: fall back to the default */
   }
-  return LANGS; // varsayılan: ikisi de açık (uygulamanın bugünkü 3 dilli hâli)
+  return LANGS; // default: both on (the app's current trilingual setup)
 }
 
 let langs: Lang[] = load();

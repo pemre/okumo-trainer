@@ -13,6 +13,13 @@ export interface Question {
   alternatives?: string[];
   options?: string[];
   words?: string[]; // scramble: shuffled word chips
+  /** Dutch text that is **already visible in the prompt**: only then may the speaker read it out
+   *  (reading the answer would give it away). Set for the Dutch→meaning and verb directions. */
+  speak?: string;
+  /** The Dutch example sentence, when the card has one — the speaker button next to `Örnek:`. */
+  zinNl?: string;
+  /** The options themselves are Dutch (visible candidates): the speaker may read them out. */
+  optionsNl?: boolean;
   detail: { nl: string; en: string; tr: string; zin?: string; zin_tr?: string };
 }
 
@@ -69,6 +76,9 @@ function choiceQuestion(item: WordItem, direction: ChoiceDir, ls: Lang[]): Quest
     promptSub,
     answer: item[key],
     options,
+    speak: prompt === item.nl ? prompt : undefined, // meaning->Dutch: listening would reveal the answer
+    zinNl: item.zin,
+    optionsNl: direction === "tr-nl" || direction === "en-nl", // the options are the Dutch candidates
     detail: wordDetail(item),
   };
 }
@@ -86,6 +96,7 @@ function typeQuestion(item: WordItem, direction: "tr-nl" | "en-nl", ls: Lang[]):
     ),
     answer: item.nl,
     alternatives: item.synoniem ? [item.synoniem] : undefined,
+    zinNl: item.zin,
     detail: wordDetail(item),
   };
 }
@@ -107,6 +118,10 @@ function connectiveQuestion(connective: Connective, kind: "choice" | "type", ls:
     hint: translate(ls, "Boşluğa uygun bağlacı getir"),
     answer: connective.nl,
     options,
+    // The gap is silent: speaking it reads the sentence with a pause where the connective goes.
+    speak: kind === "choice" ? blanked.replace(/_{2,}/, "…") : undefined,
+    zinNl: connective.zin, // after answering: the full Dutch sentence
+    optionsNl: kind === "choice",
     detail: {
       nl: connective.nl,
       en: connective.en,
@@ -132,6 +147,7 @@ function verbQuestion(verb: Verb, form: VerbForm, ls: Lang[]): Question {
     kind: "type",
     prompt: verb.inf,
     promptSub: labels[form],
+    speak: verb.inf,
     // Family names exist only in Turkish; for EN the sound-pattern code (15 families) is translated.
     hint: aileAdi(ls, verb),
     answer,
@@ -157,6 +173,7 @@ function scrambleQuestion(item: WordItem, ls: Lang[]): Question {
     hint: item.nl,
     answer: item.zin,
     words: shuffle(words),
+    zinNl: item.zin,
     detail: wordDetail(item),
   };
 }

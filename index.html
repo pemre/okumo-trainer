@@ -14,6 +14,22 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
+    <meta name="theme-color" content="#f6ead2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1613" media="(prefers-color-scheme: dark)" />
+    <!--
+      Theme before first paint: the browser/OS preference decides unless an explicit choice is stored
+      (mirrors src/lib/theme.ts). Inline so the dark palette never flashes light.
+    -->
+    <script>
+      try {
+        const choice = localStorage.getItem("okumo-trainer/theme");
+        const dark =
+          choice === "dark" ||
+          (choice !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        document.documentElement.style.colorScheme = dark ? "dark" : "light";
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

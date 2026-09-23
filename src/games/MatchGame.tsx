@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ProgressBar, XpBurst } from "../components/ui";
+import { ProgressBar, Speak, XpBurst } from "../components/ui";
 import { words } from "../lib/data";
 import { useT } from "../lib/i18n";
 import { pickSession, shuffle } from "../lib/srs";
@@ -74,14 +74,11 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
       <div className="grid grid-cols-2 gap-3" data-testid="match-board">
         <div className="flex flex-col gap-3">
           {left.map((w) => (
-            <button
+            // The card is a wrapper, not one big <button>: the speaker needs its own button (a nested
+            // button is invalid HTML and unreachable by keyboard), so the selecting button sits inside.
+            <div
               key={w.id}
-              type="button"
-              data-testid={`tile-nl-${w.id}`}
-              aria-pressed={selected === w.id}
-              disabled={locked(w.id)}
-              onClick={() => setSelected(w.id)}
-              className={`rounded-cozy border p-3 text-left shadow-cozy transition-all ${
+              className={`rounded-cozy flex items-start gap-1 border p-3 shadow-cozy transition-all ${
                 locked(w.id)
                   ? "border-good/40 bg-good/10 opacity-60"
                   : selected === w.id
@@ -91,12 +88,22 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
                       : "border-transparent bg-surface hover:brightness-[1.02]"
               }`}
             >
-              <div className="font-display text-base font-semibold sm:text-lg">
-                {locked(w.id) ? "✓ " : ""}
-                {w.nl}
-              </div>
-              {w.zin ? <div className="mt-1 text-xs italic text-inksoft">{w.zin}</div> : null}
-            </button>
+              <button
+                type="button"
+                data-testid={`tile-nl-${w.id}`}
+                aria-pressed={selected === w.id}
+                disabled={locked(w.id)}
+                onClick={() => setSelected(w.id)}
+                className="flex-1 text-left"
+              >
+                <div className="font-display text-base font-semibold sm:text-lg">
+                  {locked(w.id) ? "✓ " : ""}
+                  {w.nl}
+                </div>
+                {w.zin ? <div className="mt-1 text-xs italic text-inksoft">{w.zin}</div> : null}
+              </button>
+              <Speak text={w.nl} />
+            </div>
           ))}
         </div>
 

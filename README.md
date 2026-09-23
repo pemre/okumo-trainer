@@ -10,7 +10,7 @@ for the last 30 days (recharts) and a year-long review calendar (react-activity-
 **📄 Data sources** popup at the bottom opens the lesson notes the data comes from via `obsidian://`
 links. When new lesson notes are imported, the records added to the deck are announced once on load
 by the **🆕 new records popup**, while the permanent **"N records"** button lists the **whole** deck
-in a popup (grouped by words/connectives/verbs, alphabetical, searchable). The 🌐 menu in the top bar
+in a popup (grouped by words/connectives/verbs, alphabetical, searchable). The ⚙️ settings menu in the top bar
 turns **interface languages** on and off (TR / EN / both) and sets their **priority order** — the
 priority language shows everywhere, the other one only in meaning explanations.
 
@@ -237,8 +237,7 @@ grew to 81 px, now 49 px). The rule has three parts and lives in `src/components
   a glitch, so it is `display:none` where it cannot be readable: the **game screen below `sm`** (the
   ← button plus the chips leave no room) and the **home screen below 360 px**.
 - Chips `shrink-0 whitespace-nowrap`: they never compress and their content never breaks into two lines.
-  The **🌐 chip drops its `TR+EN` label below `sm`** (~45 px back to the title); the icon still opens
-  the menu, and the panel shows the state in full.
+  The **⚙️ chip is icon-only** (it carries no label to squeeze the title out).
 - Sizes from one place: the `TopBar` right cluster is `text-xs gap-1 px-3` (mobile) →
   `sm:text-sm sm:gap-2`, and `Pill` **never** sets its own font size (it would override the cluster).
 
@@ -336,6 +335,7 @@ collapsing into "… and N more"). No server needed: it works without a network 
 `src/data/*.json`.
 
 - Stamp: `localStorage["okumo-trainer/deck"]` — the list of card ids the device **last saw**.
+- Theme: `localStorage["okumo-trainer/theme"]` — `system` (default) / `light` / `dark`; see *Settings menu*.
   `detectNewDeckItems()` (store.ts) runs once per page load, updates the stamp and returns the new
   ids; the comparison itself is the pure `newDeckIds(seen, all)` (`scripts/sync.test.ts`).
 - First launch or a corrupt/cleared stamp: taken as the baseline **silently**, no popup. A corrupt
@@ -373,10 +373,12 @@ meaning`).
 
 ### Interface languages (3 languages: TR + EN → Dutch)
 
-The **🌐 menu** in the top bar (native `<details>`, `data-testid="lang-menu"`) turns interface
-languages on and off and sets their **priority order**: `TR`, `EN` or `TR+EN`. The choice lives in
-`localStorage["okumo-trainer/langs"]` as an **ordered array** — `langs[0]` is the priority language —
-and **at least one language stays on** (turning off the last one is ignored).
+The **⚙️ settings menu** in the top bar (native `<details>`, `data-testid="settings-menu"`) holds the
+theme row (see §6) and the interface languages: turn `TR` / `EN` on and off and set their **priority
+order**. The choice lives in `localStorage["okumo-trainer/langs"]` as an **ordered array** —
+`langs[0]` is the priority language — and **at least one language stays on** (turning off the last one
+is ignored). The rows themselves are rendered **in priority order** (top row = priority), so drag & drop
+and ↑ are visible in the menu.
 
 - **The priority language shows everywhere**: interface strings (`translate`), month labels, and the
   language the questions are asked in.
@@ -421,7 +423,35 @@ and **at least one language stays on** (turning off the last one is ignored).
 
 ---
 
-## 6) Service and infrastructure
+## 6) Settings menu, theme and audio
+
+One general menu in the top bar (`⚙️`, `data-testid="settings-menu"`) holds **both** settings.
+
+**Theme** (`src/lib/theme.ts` + the `.dark` block in `src/styles.css`)
+- The **browser/OS preference decides by default** (`prefers-color-scheme`): nothing stored = `system`,
+  and the OS can flip at sunset while the app is open.
+- An explicit **System / Light / Dark** choice wins over the OS and is stored in
+  `localStorage["okumo-trainer/theme"]`.
+- One palette, two values: `theme.ts` toggles the `dark` class on `<html>`, and the `.dark` block
+  overrides the *same* `@theme` tokens — so no component needs a `dark:` variant. Colours that land in
+  SVG **attributes** (recharts bars, the calendar's empty squares) cannot use `var()`, so
+  `History.tsx` picks them in JS from the resolved theme (`useDark()`).
+- `index.html` carries a tiny inline script that applies the choice **before first paint** (no light
+  flash), and `<meta name="theme-color">` follows the scheme for the browser UI.
+
+**Audio** (`src/lib/tts.ts`) — the **browser's own voice** (`speechSynthesis`, `lang = nl-NL`, rate
+0.9): no dependency, no audio files, works offline; on iOS/macOS the Dutch system voices are used.
+A speaker button (`<Speak>`, `data-testid="speak"`, inline SVG) sits next to Dutch text:
+- the question prompt — **only when the Dutch is already on screen** (meaning→Dutch questions carry no
+  speaker: hearing it would give the answer away);
+- the feedback (`NL:` row and the Dutch example sentence);
+- the **deck** rows, the **matching** cards (Dutch side) and the **connectives** (the blanked sentence,
+  the gap spoken as a pause, plus the Dutch answer options).
+Cards that also select on tap use the wrapper pattern (`div` + inner `button` + speaker `button`), so
+the speaker is its own focusable control — a nested `<button>` is invalid HTML. Nothing is rendered
+when the browser has no speech synthesis.
+
+## 7) Service and infrastructure
 
 | | |
 |---|---|
@@ -439,16 +469,17 @@ services too (`yap.ev`).
 
 ---
 
-## 7) Tests and verification
+## 8) Tests and verification
 
 ```bash
-bun test               # 68 tests / 8 files
+bun test               # 73 tests / 9 files
 bun run lint           # biome check (CI runs the same step)
 bunx tsc --noEmit      # type check
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px top bar
 python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # sources popup + obsidian links
 python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # calendar opens at the far right (today)
 python3 ~/.hermes/cache/scratch/okumo_new_items_check.py              # new-records popup: quiet first load, 4 new words
+python3 ~/.hermes/cache/scratch/okumo_settings_tts_check.py          # ⚙️ menu: theme (OS default, explicit, persisted), Sv/Lv, speaker buttons
 python3 ~/.hermes/cache/scratch/okumo_lang_menu_check.py              # language menu: priority order, persistence, game+deck, 375 px
 python3 ~/.hermes/cache/scratch/okumo_progress_check.py            # round bar: label = bar base, last question = 100%, connectives = 9
 python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py             # "N records" button → the whole deck (335 = 111+9+215)
@@ -468,7 +499,7 @@ tests live in the local scratch folder, never in the repo.
 
 ---
 
-## 8) Publishing (GitHub Pages)
+## 9) Publishing (GitHub Pages)
 
 - `main` → the root address (`deploy.yml`); `base: "./"` makes it work both at the root and in a subdirectory.
 - Every PR → a preview under `/pull/<number>/` (`pages-preview.yml`), deleted when the PR closes.
@@ -478,7 +509,7 @@ tests live in the local scratch folder, never in the repo.
 
 ---
 
-## 9) Roadmap / known limits
+## 10) Roadmap / known limits
 
 - Nothing outstanding right now. Progress sync goes through a single server file (enough for personal
   use; multi-user would need locking).

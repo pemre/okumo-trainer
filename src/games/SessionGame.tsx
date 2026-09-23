@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { BigButton, ProgressBar } from "../components/ui";
+import { BigButton, ProgressBar, Speak } from "../components/ui";
 import { feedbackSound, haptic, shake } from "../lib/feedback";
 import { getLangs, useT } from "../lib/i18n";
 import { checkAnswer } from "../lib/srs";
@@ -92,8 +92,12 @@ export default function SessionGame({
       </div>
 
       <div ref={card} className="rounded-cozy bg-surface p-5 shadow-cozy">
-        <div className="font-display text-2xl font-semibold leading-tight" data-testid="prompt">
-          {q.prompt}
+        <div className="flex items-start gap-2">
+          <div className="font-display text-2xl font-semibold leading-tight" data-testid="prompt">
+            {q.prompt}
+          </div>
+          {/* Only when the Dutch is already on screen — the speaker never gives the answer away. */}
+          {q.speak ? <Speak text={q.speak} className="mt-1" /> : null}
         </div>
         {q.promptSub ? <div className="mt-2 text-sm text-inksoft">{q.promptSub}</div> : null}
         {q.hint ? <div className="mt-3 text-xs text-inksoft">{q.hint}</div> : null}
@@ -113,19 +117,26 @@ export default function SessionGame({
                     ? "bg-danger/10 border-danger"
                     : "bg-surface opacity-60";
             return (
-              <button
+              // Wrapper + inner button: the speaker (Dutch options only) is a real button of its own.
+              <div
                 key={opt}
-                type="button"
-                data-testid={`option-${opt}`}
-                disabled={state !== "asking"}
-                onClick={() => {
-                  setPicked(opt);
-                  settle(opt === q.answer);
-                }}
-                className={`rounded-cozy border border-transparent px-4 py-3 text-left font-semibold shadow-cozy transition-all ${tone}`}
+                className={`rounded-cozy flex items-center gap-2 border border-transparent px-4 py-3 font-semibold shadow-cozy transition-all ${tone}`}
               >
-                {opt}
-              </button>
+                <button
+                  type="button"
+                  data-testid={`option-${opt}`}
+                  disabled={state !== "asking"}
+                  onClick={() => {
+                    setPicked(opt);
+                    settle(opt === q.answer);
+                  }}
+                  className="flex-1 text-left"
+                >
+                  {opt}
+                </button>
+                {/* Choice candidates in Dutch (connectives, meaning→Dutch): hear them before picking. */}
+                {q.optionsNl ? <Speak text={opt} /> : null}
+              </div>
             );
           })
         ) : q.kind === "scramble" ? (
@@ -222,6 +233,7 @@ export default function SessionGame({
             <div>
               <dt className="inline font-semibold">NL: </dt>
               <dd className="inline">{q.detail.nl}</dd>
+              <Speak text={q.detail.nl} />
             </div>
             {langs.map((l) => (
               <div key={l}>
@@ -234,6 +246,7 @@ export default function SessionGame({
                 <dt className="inline font-semibold">{t("Örnek: ")}</dt>
                 <dd className="inline italic">
                   {q.detail.zin}
+                  {q.zinNl ? <Speak text={q.zinNl} /> : null}
                   {/* The sentence translation exists only in Turkish (`zin_tr`): hidden when TR is off. */}
                   {langs.includes("tr") && q.detail.zin_tr ? ` — ${q.detail.zin_tr}` : ""}
                 </dd>

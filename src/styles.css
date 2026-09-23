@@ -26,6 +26,31 @@
   --shadow-cozy: 0 10px 30px -12px rgba(37, 30, 24, 0.35);
 }
 
+/*
+ * Dark palette: the same tokens, warm night version, so no component needs a `dark:` variant.
+ * Applied by `src/lib/theme.ts` on `<html>`: the browser/OS preference decides by default
+ * (`prefers-color-scheme`), and an explicit choice in the settings menu overrides it.
+ */
+.dark {
+  --color-sand: #1a1613;
+  --color-surface: #231e19;
+  --color-surface2: #2d2721;
+  --color-ink: #f3e9dc;
+  --color-inksoft: #b7a58f;
+  --color-accent: #e8734a;
+  --color-accentsoft: #44291d;
+  --color-indigosoft: #1f2b39;
+  --color-indigomid: #90b3da;
+  --color-indigo: #6c94c5;
+  --color-indigodeep: #4b6e9a;
+  --color-amber: #e8a13c;
+  --color-ambertext: #eeb768;
+  --color-locked: #4a4034;
+  --color-danger: #e0704c;
+  --color-good: #5fbc8c;
+  --shadow-cozy: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
 html,
 body,
 #root {

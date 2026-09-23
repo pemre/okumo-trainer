@@ -1,5 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { dilTasi, LANG_ADI, LANGS, type Lang, toggleLang, useT } from "../lib/i18n";
+import { setTema, TEMA_ADI, TEMALAR, useTema } from "../lib/theme";
+import { speak, speakAvailable } from "../lib/tts";
 
 export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => void }) {
   const { t } = useT();
@@ -106,28 +108,89 @@ export function BigButton({
 }
 
 /**
- * Small language menu in the top bar: which interface languages are on (TR / EN / both).
- * Native `<details>`: no JS state, opens on click and stays open when an option is toggled
- * (so a second language can be toggled too). Turning off the last language is ignored in `toggleLang`.
+ * Speaker button: reads Dutch aloud with the browser's own voice (see `src/lib/tts.ts`).
+ * Rendered only where the Dutch text is already visible (never to give an answer away), and not at
+ * all when the browser has no speech synthesis.
+ */
+export function Speak({ text, className = "" }: { text: string; className?: string }) {
+  const { t } = useT();
+  if (!speakAvailable() || !text) return null;
+  return (
+    <button
+      type="button"
+      data-testid="speak"
+      aria-label={`${t("Sesli oku")}: ${text}`}
+      title={t("Sesli oku")}
+      onClick={(e) => {
+        e.stopPropagation(); // inside a clickable row/card: only speak, do not open/answer
+        speak(text);
+      }}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full p-1 text-inksoft align-middle transition-colors hover:bg-surface2 hover:text-ink active:scale-90 ${className}`}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M11 4.5 6.5 8.5H3.5v7h3L11 19.5v-15Z" />
+        <path d="M15.2 8.8a4.6 4.6 0 0 1 0 6.4" />
+        <path d="M18.1 6.1a8.6 8.6 0 0 1 0 11.8" />
+      </svg>
+    </button>
+  );
+}
+
+/**
+ * Top-right menu: one general menu for **theme** (light/dark, browser/OS by default, see
+ * `src/lib/theme.ts`) and the **interface languages** (TR / EN / both, drag the ⠿ handle or use ↑ to
+ * set the priority). Native `<details>`: no JS state, opens on click and stays open when an option is
+ * toggled. Turning off the last language is ignored in `toggleLang`.
  * ponytail: known ceiling — clicking outside does not close it (tap the summary again); add a
  * document click listener if that ever matters.
  */
-export function LangMenu() {
+export function SettingsMenu() {
   const { langs, t } = useT();
+  const tema = useTema();
   const [cek, setCek] = useState<Lang | null>(null); // language being dragged (null on drop)
   return (
-    <details className="relative" data-testid="lang-menu">
+    <details className="relative" data-testid="settings-menu">
       <summary
-        title={t("Arayüz dilleri")}
+        title={t("Ayarlar")}
+        aria-label={t("Ayarlar")}
         className="cursor-pointer list-none whitespace-nowrap rounded-full bg-surface px-2 py-0.5 font-semibold text-inksoft shadow-cozy sm:px-3 sm:py-1"
       >
-        🌐{" "}
-        {/* Below `sm` the label would squeeze the title out of the top bar: the icon still opens the menu. */}
-        <span className="hidden sm:inline">{langs.map((l) => l.toUpperCase()).join("+")}</span>
+        ⚙️
       </summary>
-      <div className="absolute right-0 z-30 mt-2 w-60 rounded-cozy bg-surface p-3 text-left shadow-cozy">
-        <div className="text-xs font-semibold">{t("Arayüz dilleri")}</div>
-        {LANGS.map((l) => {
+      <div className="absolute right-0 z-30 mt-2 w-64 rounded-cozy bg-surface p-3 text-left shadow-cozy">
+        <div className="text-xs font-semibold">{t("Tema")}</div>
+        <div className="mt-2 flex gap-1" data-testid="theme-row">
+          {TEMALAR.map((x) => (
+            <button
+              key={x}
+              type="button"
+              data-testid={`theme-${x}`}
+              aria-pressed={tema === x}
+              onClick={() => setTema(x)}
+              className={`flex-1 rounded-full px-2 py-1 text-xs font-semibold ${
+                tema === x ? "bg-ink text-sand" : "bg-surface2 text-inksoft"
+              }`}
+            >
+              {t(TEMA_ADI[x])}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 border-t border-surface2 pt-3 text-xs font-semibold">
+          {t("Arayüz dilleri")}
+        </div>
+        {/* Rows follow the **priority order** (enabled first, in priority order): the top row is the
+            priority language, so drag & drop and ↑ are visible in the menu itself. */}
+        {[...langs, ...LANGS.filter((l) => !langs.includes(l))].map((l) => {
           const acik = langs.includes(l);
           return (
             // biome-ignore lint/a11y/noStaticElementInteractions: drop target for reordering the rows
