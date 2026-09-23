@@ -29,6 +29,7 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 |---|---|
 | Yeni oyun modu | `src/games/questions.ts`'e soru üretici + `App.tsx` MODES kartı + README "Oyun modları" satırı + `scripts/questions.test.ts`'e kapsam testi |
 | Yeni etkileşim öğesi (düğme, çip, form) | Tarayıcı duman testinde **tıklanarak** doğrulanır, sadece klavye (Enter) ile geçilmez — `BigButton` `type="button"`'dır, formu kendiliğinden göndermez |
+| Ses/titreşim/titreme davranışı | `src/lib/feedback.ts` + `scripts/feedback.test.ts` + README "Bas geri bildirimi"; kanonik sürüm kardeş depo `ay-ui-library`'deki `PressFeedback` bloğu — ikisi aynı commit'te uyumlu tutulur |
 | Veri şeması değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + README "Veri kuralları" birlikte değişir |
 | Yeni komut / bağımlılık | `package.json` + README "Komutlar" tablosu |
 | Port, URL, sunucu ucu | `server.mjs` + `README` "Servis ve altyapı" + SwiftBar eklentisi (`URL`, `PORT`) birlikte |
@@ -55,7 +56,7 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 30 test: soru sözleşmeleri, SRS, veri sözleşmeleri, eşitleme birleştirme
+bun test            # 37 test: bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
 bun run build       # dist/
@@ -83,6 +84,7 @@ okumo-trainer/
 │   ├── srs.test.ts         # aralıklı tekrar, oturum seçimi, cevap denetimi
 │   ├── data.test.ts        # üretilen verinin sözleşmeleri
 │   ├── questions.test.ts   # soru üreticileri: her mod soru üretir, her cevap kabul kuralından geçer
+│   ├── feedback.test.ts    # bas geri bildirimi: titreme kareleri, iptal, sessiz geri düşüş, ton frekansı
 │   └── sync.test.ts        # iki cihazın ilerlemesini birleştirme kuralları
 ├── src/
 │   ├── App.tsx             # ana sayfa (mod kartları, XP/seri, eşitleme durumu) + tur özeti
@@ -92,6 +94,7 @@ okumo-trainer/
 │   │   ├── data.ts         # üretilmiş JSON'ları içe alır
 │   │   ├── srs.ts          # SM-2 sadeleştirmesi: review(), checkTyped(), pickSession()
 │   │   ├── sync.ts         # mergeProgress(), normalizeProgress() — saf fonksiyonlar
+│   │   ├── feedback.ts     # bas geri bildirimi: Web Audio tonları, titreşim, WAAPI titreme
 │   │   └── store.ts        # localStorage + sunucu eşitlemesi, XP/seri, React hook'ları
 │   ├── games/
 │   │   ├── questions.ts    # moda göre soru üreticileri
@@ -128,6 +131,31 @@ Notlar vault'ta durur (`OKUMO_NOTES_DIR` ile başka klasöre yönlendirilebilir)
 
 Tur başına 10 soru (eşleştirmede 5 çift). Doğru cevap +10 XP, yanlış +2 XP; yanlışlar tur sonunda
 listelenir ve kartın tekrar tarihi bugüne çekilir. Seviye: her 200 XP bir seviye.
+
+### Bas geri bildirimi (ses, titreşim, titreme)
+
+Her cevap değerlendirmesinde yap.ev'deki tuş hissi verilir: `settle()` içinde **tek yerde** ton + titreşim +
+kısa titreme. Tur bitince bitiş fanfarı çalar ve tüm sayfa titrer (`[data-feedback-root]`).
+
+| An | Ses | Titreme |
+|---|---|---|
+| Doğru | `success` (880 → 1320 Hz) | yumuşak (6 kare / 260 ms, soru kartı) |
+| Yanlış | `error` (400 → 300 Hz) | sert (8 kare / 480 ms, soru kartı) |
+| Tur sonu | `finish` (523/659/784/1047 Hz arpej) | sert (tüm sayfa) |
+
+- Ses dosyası yok: tonlar Web Audio ile sentezlenir → **çevrimdışı çalışır**, pakete ses eklenmez.
+- `src/lib/feedback.ts` bağımlılıksızdır; Web Audio / titreşim / animasyon API'si olmayan ortamda sessizce
+  hiçbir şey yapmaz, asla hata vermez (iOS Safari titreşimi yok sayar; ses ve titreme çalışır).
+- Titreme Web Animations API'siyle, yalnızca `translate` ile (döndürme yok → mobilde viewport kaymaz);
+  üst üste basışta önceki titreme iptal edilir, sınıf ekle/çıkar yarışı yok.
+- **Kanonik, yeniden kullanılabilir sürüm `ay-ui-library` deposunda**: `PressFeedback` bloğu
+  (`usePressFeedback()` + `feedbackSound()`, `haptic()`, `shake()`). Burada aynı motorun kopyası duruyor,
+  çünkü dil uygulaması bağımlılıksız ve çevrimdışı kalmalı ve GitHub Actions derlemesi kardeş depoya
+  erişemez; kütüphane npm'e yayımlanırsa bu dosya import'a döner.
+- Doğrulama: `scripts/feedback.test.ts` (birim: kare sayısı, iptal, sessiz geri düşüş, ton frekansı) +
+  `okumo_feedback_check.py` (tarayıcı: gerçek elemanda animasyonun başladığı ve tonun çalındığı ölçülür).
+- Ses rahatsız ederse kapatmak için `feedbackSound` çağrılarının başına tek koşul yeter; kalıcı bir
+  🔊/🔇 düğmesi istenirse hem buraya hem `ay-ui-library`'nin `PressFeedback` bloğuna eklenir.
 
 ---
 
@@ -184,7 +212,7 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 30 test / 4 dosya
+bun test               # 37 test / 5 dosya
 bunx tsc --noEmit      # tip kontrolü
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}

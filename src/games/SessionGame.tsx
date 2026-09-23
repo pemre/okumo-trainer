@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { BigButton, ProgressBar } from "../components/ui";
 import { getProgress } from "../lib/store";
 import { checkAnswer } from "../lib/srs";
+import { feedbackSound, haptic, shake } from "../lib/feedback";
 import type { Grade } from "../lib/types";
 import { buildQuestions, type Question } from "./questions";
 import type { GameResult } from "./MatchGame";
@@ -25,6 +26,7 @@ export default function SessionGame({
   const [order, setOrder] = useState<number[]>([]); // scramble: seçilen kelime çiplerinin sırası
   const [state, setState] = useState<"asking" | "right" | "wrong">("asking");
   const grades = useRef<Record<string, Grade>>({});
+  const card = useRef<HTMLDivElement | null>(null);
   const correctCount = useRef(0);
   const wrongIds = useRef<string[]>([]);
 
@@ -39,6 +41,10 @@ export default function SessionGame({
     if (ok) correctCount.current += 1;
     else if (!wrongIds.current.includes(q.id)) wrongIds.current.push(q.id);
     setState(ok ? "right" : "wrong");
+    // yap.ev'in tuş hissi: ton + titreşim + kısa titreme (yanlışta daha sert)
+    feedbackSound(ok ? "success" : "error");
+    haptic();
+    shake(card.current, ok ? "soft" : "hard");
   }
 
   function submitTyped() {
@@ -50,6 +56,10 @@ export default function SessionGame({
       const correct = correctCount.current;
       const gradeMap = grades.current;
       const xp = Object.values(gradeMap).reduce<number>((sum, g) => sum + (g === 0 ? 2 : 10), 0);
+      // Tur bitti: bitiş fanfarı + tüm sayfayı titret (oyun ekranı birazdan kapanıyor)
+      feedbackSound("finish");
+      haptic();
+      shake(document.querySelector("[data-feedback-root]"), "hard");
       onFinish({
         grades: gradeMap,
         xp,
@@ -75,7 +85,7 @@ export default function SessionGame({
         </span>
       </div>
 
-      <div className="rounded-cozy bg-surface p-5 shadow-cozy">
+      <div ref={card} className="rounded-cozy bg-surface p-5 shadow-cozy">
         <div className="font-display text-2xl font-semibold leading-tight" data-testid="prompt">
           {q.prompt}
         </div>

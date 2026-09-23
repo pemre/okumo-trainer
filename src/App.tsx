@@ -102,7 +102,7 @@ export default function App() {
   const level = levelOf(progress.xp);
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh" data-feedback-root>
       <TopBar
         onHome={screen.name === "home" ? undefined : () => setScreen({ name: "home" })}
         right={
