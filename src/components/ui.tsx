@@ -15,8 +15,13 @@ export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => vo
           ←
         </button>
       ) : null}
-      {/* min-w-0 + truncate: let the title clip on narrow screens instead of wrapping the chips */}
-      <div className="min-w-0 truncate font-display text-base font-semibold tracking-tight sm:text-lg">
+      {/* min-w-0 + truncate: let the title clip instead of wrapping the chips — but where even a
+          clipped title reads as a glitch (game screen, or a 320px phone) hide it on purpose. */}
+      <div
+        className={`min-w-0 truncate font-display text-base font-semibold tracking-tight sm:text-lg ${
+          onHome ? "hidden sm:block" : "hidden min-[360px]:block"
+        }`}
+      >
         okumo-trainer
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1 text-xs sm:gap-2 sm:text-sm">
@@ -116,7 +121,9 @@ export function LangMenu() {
         title={t("Arayüz dilleri")}
         className="cursor-pointer list-none whitespace-nowrap rounded-full bg-surface px-2 py-0.5 font-semibold text-inksoft shadow-cozy sm:px-3 sm:py-1"
       >
-        🌐 {langs.map((l) => l.toUpperCase()).join("+")}
+        🌐{" "}
+        {/* Below `sm` the label would squeeze the title out of the top bar: the icon still opens the menu. */}
+        <span className="hidden sm:inline">{langs.map((l) => l.toUpperCase()).join("+")}</span>
       </summary>
       <div className="absolute right-0 z-30 mt-2 w-60 rounded-cozy bg-surface p-3 text-left shadow-cozy">
         <div className="text-xs font-semibold">{t("Arayüz dilleri")}</div>
