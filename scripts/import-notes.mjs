@@ -108,14 +108,22 @@ function tableRowToItem(row, map) {
 const NL_LIKE =
   /\b(de|het|een|ik|je|hij|zij|wij|niet|is|zijn|heb|hebt|heeft|moet|kan|kun|wil|ga|kom|dat|die|om|en|maar)\b/i;
 
-function parseBullet(bodyRaw, out) {
+function parseBullet(bodyRaw, out, rapor = null, satir = 0) {
   const body = clean(bodyRaw);
-  if (body.includes("(")) return; // dipnot/açıklama maddesi
+  if (body.includes("(")) {
+    rapor?.push({ satir, sebep: "parantezli madde (dipnot sayılır)", metin: body });
+    return;
+  }
   const parts = body
     .split(/\s+[—–]\s+|\s+-\s+/)
     .map((p) => p.trim())
     .filter(Boolean);
-  if (parts.length < 2 || parts.length > 3) return;
+  // Tek parça = düz liste maddesi, kayda dönüşmesi beklenmez; 4+ parça sessizce düşerdi.
+  if (parts.length > 3) {
+    rapor?.push({ satir, sebep: `${parts.length} parçalı madde (en çok 3 okunur)`, metin: body });
+    return;
+  }
+  if (parts.length < 2) return;
   const [nlRaw, second, third] = parts;
   const quoted = /^["“]/.test(nlRaw);
   const nl = quoted ? nlRaw.replace(/^["“]|["”]\.?$/g, "").trim() : nlRaw.replace(/\.$/, "").trim();
@@ -130,13 +138,18 @@ function parseBullet(bodyRaw, out) {
     } else item.zin = third;
   }
   if (quoted) item.zin = nl;
-  if (!nl || norm(nl).length < 2) return;
+  if (!nl || norm(nl).length < 2) {
+    rapor?.push({ satir, sebep: "Hollandaca boş/kısa", metin: body });
+    return;
+  }
   out.push(item);
 }
 
-function parseMarkdown(text) {
+/** @returns {{items: object[], atlanan: {satir: number, sebep: string, metin: string}[]}} */
+export function parseMarkdown(text) {
   const lines = text.split(/\r?\n/);
   const items = [];
+  const atlanan = [];
   let inFence = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -156,18 +169,21 @@ function parseMarkdown(text) {
         const header = cells(block[0]);
         const bodyStart = isSeparator(block[1]) ? 2 : 1;
         const map = columnsFromHeader(header);
-        for (const raw of block.slice(bodyStart)) {
+        for (let k = bodyStart; k < block.length; k++) {
+          const raw = block[k];
           const item = tableRowToItem(cells(raw), map);
           if (item && item.nl && !/^#+$/.test(item.nl)) items.push(item);
+          else if (cells(raw).filter(Boolean).length >= 2 && /[A-Za-zÀ-ÿ]/.test(raw))
+            atlanan.push({ satir: i + k + 1, sebep: "tablo satırı okunamadı", metin: raw.trim() });
         }
       }
       continue;
     }
 
     const bullet = /^\*\s+(?<body>.+)$/.exec(line);
-    if (bullet) parseBullet(bullet.groups.body, items);
+    if (bullet) parseBullet(bullet.groups.body, items, atlanan, i + 1);
   }
-  return items;
+  return { items, atlanan };
 }
 
 function mergeItems(lists) {
@@ -223,12 +239,14 @@ async function main() {
   const files = (await readdir(NOTES_DIR)).filter((f) => f.endsWith(".md")).sort();
   const lists = [];
   const sources = [];
+  const atlanan = [];
   for (const f of files) {
     const parsed = parseMarkdown(await readFile(path.join(NOTES_DIR, f), "utf8"));
     const bron = /^\d{4}-\d{2}-\d{2}/.exec(f)?.[0] || f;
-    for (const it of parsed) it.bron = bron;
-    lists.push(parsed);
-    sources.push({ file: f, items: parsed.length, obsidian: obsidianLink(f) });
+    for (const it of parsed.items) it.bron = bron;
+    lists.push(parsed.items);
+    sources.push({ file: f, items: parsed.items.length, obsidian: obsidianLink(f) });
+    for (const a of parsed.atlanan) atlanan.push({ dosya: f, ...a });
   }
 
   const connectieven = existsSync(path.join(SOURCE_DIR, "connectieven.json"))
@@ -295,9 +313,17 @@ async function main() {
   console.log(`kelime/ifade : ${items.length}  (eksik alanlı: ${eksik.length})`);
   console.log(`bağlaç       : ${connectieven.length}   fiil: ${werkwoorden.length}`);
   if (eksik.length) console.log(eksik.map((e) => `${e.nl}[${e.eksik}]`).join(" | "));
+  // Notta duran ama uygulamaya girmeyen içerik: sessiz kaybı görünür kılar (bkz. README "Veri kuralları").
+  if (atlanan.length) {
+    console.log(`\natlanan içerik: ${atlanan.length} satır kayda dönüşmedi`);
+    for (const a of atlanan)
+      console.log(`  ${a.dosya.slice(0, 10)}:${a.satir}  ${a.sebep} → ${a.metin.slice(0, 70)}`);
+  }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

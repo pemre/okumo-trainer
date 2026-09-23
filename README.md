@@ -34,7 +34,7 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 | Üst çubuk / chip düzeni | Dar ekranda tek satır kalmalı: kırpılan `TopBar` başlığı, `shrink-0` chip'ler, boyut `sm:` ile tek yerden — `okumo_mobile_check.py` ile 320/375 px'te doğrulanır |
 | Yeni etkileşim öğesi (düğme, çip, form) | Tarayıcı duman testinde **tıklanarak** doğrulanır, sadece klavye (Enter) ile geçilmez — `BigButton` `type="button"`'dır, formu kendiliğinden göndermez |
 | Ses/titreşim/titreme davranışı | `src/lib/feedback.ts` + `scripts/feedback.test.ts` + README "Bas geri bildirimi"; kanonik sürüm kardeş depo `ay-ui-library`'deki `PressFeedback` bloğu — ikisi aynı commit'te uyumlu tutulur |
-| Veri şeması değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + README "Veri kuralları" birlikte değişir |
+| Veri şeması / not ayrıştırma değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + `scripts/notes.test.ts` + README "Veri kuralları" birlikte değişir |
 | Yeni komut / bağımlılık | `package.json` + README "Komutlar" tablosu |
 | Port, URL, sunucu ucu | `server.mjs` + `README` "Servis ve altyapı" + SwiftBar eklentisi (`URL`, `PORT`) birlikte |
 | İlerleme/eşitleme mantığı | `src/lib/sync.ts` + `scripts/sync.test.ts` + README "İlerleme ve eşitleme" |
@@ -63,7 +63,7 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 46 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme
+bun test            # 48 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme, not ayrıştırıcısı
 bun run lint        # biome: lint + format kontrolü (1 uyarı tolere edilir, hata yok)
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
@@ -90,6 +90,7 @@ okumo-trainer/
 │   ├── import-notes.mjs    # Obsidian notları → src/data/*.json (+ obsidian:// bağlantıları)
 │   ├── srs.test.ts         # aralıklı tekrar, oturum seçimi, cevap denetimi
 │   ├── data.test.ts        # üretilen verinin sözleşmeleri
+│   ├── notes.test.ts       # not ayrıştırıcısı: kayda dönüşen/dönüşmeyen satırlar (+satır no)
 │   ├── questions.test.ts   # soru üreticileri: her mod soru üretir, her cevap kabul kuralından geçer
 │   ├── feedback.test.ts    # bas geri bildirimi: titreme kareleri, iptal, sessiz geri düşüş, ton frekansı
 │   ├── history.test.ts     # günlük seri: eksik gün, yaz saati geçişi, seviye eşikleri, ortalama
@@ -234,12 +235,41 @@ yatay kaymıyor, chip'ler tek satır ve ekran içinde, başlık ≥60 px görün
   `to spend (money, time)`). Bu yüzden notta `(…)` ile yazılan kısa ipucu uygulamada görünmez.
 - Cümle hücresi `NL — TR` biçiminde tutulur; çevirisi olmayan cümle varsa eksik sayılır.
 - `src/data/*.json` üretilmiştir: elle düzenlenmez, `bun run import` ile yenilenir, commit edilir.
-- Güncel veri: **85 kelime/ifade · 9 bağlaç · 215 fiil** (eksik alan: 0).
+- **Sessiz kayıp görünürdür:** `bun run import` çıktısının sonunda "atlanan içerik" bölümü, kayda
+  dönüşmeyen satırları dosya:satır + sebep + metin olarak listeler. Sebepler: *parantezli madde*
+  (`* cursus (kurs, ders) vs opleiding (…)` — dipnot sayılır), *4+ parçalı madde* (`parseBullet` en
+  çok 3 parça okur), *Hollandaca boş/kısa*, *tablo satırı okunamadı*. Bu liste boş değilse ya satır
+  düzeltilir (bullet → tablo satırı) ya da bilinçli olarak notta bırakıldığı kabul edilir; sessizce
+  yok sayılmaz. Örnek: `verloren` maddesi 4 parçalı olduğu için uygulamaya hiç girmiyordu (23.09.2026'da
+  tablo satırına çevrildi, 85 → 86 kayıt).
+- Güncel veri: **86 kelime/ifade · 9 bağlaç · 215 fiil** (eksik alan: 0, atlanan içerik: 2 dipnot).
 - **Kaynak popup'ı:** ana sayfanın altındaki "📄 Veri kaynakları (3)" düğmesi yerleşik `<dialog>`
   (`showModal()`) açar; her satır notu Obsidian'da açar (`obsidian://open?vault=emre&file=…`), yanında
   o nottan üretilen kayıt sayısı yazar. Kaynak listesi büyüdükçe sayfa uzamasın diye liste artık
   yalnız popup'ta. Kapatma: ESC ya da **Kapat** (arkaya tıklayarak kapatma, `useKeyWithClickEvents`
   a11y kuralını gereksiz tetiklediği için eklenmedi).
+
+---
+
+### Ders fotoğrafı → not → uygulama
+
+Ders sırasında alınan not (tablo/liste) veya **tablet/tahtadaki önemli sözcükler tablosunun
+fotoğrafı** aynı yoldan geçer; fotoğrafı ayrıştıran bir kod yok, akış agent işidir:
+
+1. Fotoğraf/not içeriği okunur, satırlar **not şemasına** çevrilir:
+   `| Hollandaca | İngilizce | Türkçe | Örnek Cümle (NL) — çevirisi |`.
+2. Satırlar ilgili ders notuna eklenir (`4. Belgelik/Hollandaca dil kursu/<YYYY-MM-DD> Hollandaca dil kursu.md`).
+   Yeni ders günüyse o günün dosyası oluşturulur (frontmatter: `title/date/created/url/tags/notes`).
+   Uzun listeler için hücreler aynı genişliğe hizalanır; mevcut tabloya satır eklendiyse tablo yeniden
+   hizalanır (aksi hâlde hizasızlık kullanıcı tarafından fark edilir).
+3. `bun run import` → "atlanan içerik" boş mu? `bun test` (veri sözleşmesi) → `bun run build`.
+4. Commit + push (README aynı commit'te). Yerel `dil.ev` yeniden derlenmiş `dist`'i okur; SwiftBar
+   eklentisi "dist eski" uyarısı veriyorsa **derle** eylemi çalıştırılır.
+
+Kurallar: notlar tek doğruluk kaynağıdır (veri uygulamaya elle yazılmaz); aynı sözcük iki kez
+eklenirse `mergeItems` normalize edilmiş Hollandaca üzerinden birleştirir, boş alanlar tamamlanır —
+yani tekrar satır zararsızdır. İngilizce/Türkçe eksikse uygulamada eksik sayılır ve veri testi
+kırmızı olur; bu yüzden yeni satır **dört alan dolu** olacak şekilde yazılır.
 
 ---
 
@@ -286,7 +316,7 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 46 test / 6 dosya
+bun test               # 48 test / 7 dosya
 bun run lint           # biome check (CI'da aynı adım var)
 bunx tsc --noEmit      # tip kontrolü
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px üst çubuk
@@ -295,6 +325,9 @@ python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # tekrar t
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
 ```
+
+`bun run import` çıktısı da bir kanıttır: "eksik alanlı: 0" ve "atlanan içerik" listesi (boş ya da
+bilinçli kabul edilmiş dipnotlar).
 
 Değişiklikten sonra beklenen kanıt: testler geçer, `bun run lint` hata vermez, tip kontrolü temiz,
 derleme çalışır, `/health`
