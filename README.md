@@ -7,7 +7,8 @@ Hollandaca alıştırma uygulaması: **sınıf notlarından üretilmiş kelime/i
 okumo.dev'in dilini ödünç alır: krem zemin + terracotta aksan, Fraunces/Nunito Sans, yuvarlak
 "cozy" kartlar; tekrar planı SM-2'den sadeleştirilmiştir. Ana sayfada son 30 günün XP grafiği
 (recharts) ve yıllık tekrar takvimi (react-activity-calendar) vardır; alttaki **📄 Veri kaynakları**
-popup'ı, verinin üretildiği ders notlarını `obsidian://` bağlantısıyla açar.
+popup'ı, verinin üretildiği ders notlarını `obsidian://` bağlantısıyla açar. Yeni ders notları içe
+aktarıldığında desteye eklenen kayıtlar açılışta **🆕 yeni kayıt popup'ı** ile bir kez haber verilir.
 
 ---
 
@@ -37,7 +38,7 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 | Veri şeması / not ayrıştırma değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + `scripts/notes.test.ts` + README "Veri kuralları" birlikte değişir |
 | Yeni komut / bağımlılık | `package.json` + README "Komutlar" tablosu |
 | Port, URL, sunucu ucu | `server.mjs` + `README` "Servis ve altyapı" + SwiftBar eklentisi (`URL`, `PORT`) birlikte |
-| İlerleme/eşitleme mantığı | `src/lib/sync.ts` + `scripts/sync.test.ts` + README "İlerleme ve eşitleme" |
+| İlerleme/eşitleme ve deste değişimi | `src/lib/sync.ts` + `scripts/sync.test.ts` + README "İlerleme ve eşitleme" (yeni kayıt popup'ı dâhil) |
 | Ders notu klasörü değişirse | `OKUMO_NOTES_DIR` ile çalıştır, `import-notes.mjs` dokunulmaz |
 | Notlardaki eksik/hatalı alan | Düzeltme **notun kendisine** yazılır (tablo hücresi; bullet 4 alanı taşımıyorsa tablo satırına çevrilir) → sonra `bun run import` + `bun test` |
 | Commit | Türkçe, emir kipi, tek satır: `eşleştirme: yanlışta kart titremesi` |
@@ -63,7 +64,7 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 48 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme, not ayrıştırıcısı
+bun test            # 51 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme, not ayrıştırıcısı
 bun run lint        # biome: lint + format kontrolü (1 uyarı tolere edilir, hata yok)
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
@@ -103,10 +104,10 @@ okumo-trainer/
 │   │   ├── types.ts        # WordItem, Connective, Verb, CardState, Progress, ModeId
 │   │   ├── data.ts         # üretilmiş JSON'ları içe alır
 │   │   ├── srs.ts          # SM-2 sadeleştirmesi: review(), checkTyped(), pickSession()
-│   │   ├── sync.ts         # mergeProgress(), normalizeProgress() — saf fonksiyonlar
+│   │   ├── sync.ts         # mergeProgress(), newDeckIds(), normalizeProgress() — saf fonksiyonlar
 │   │   ├── feedback.ts     # bas geri bildirimi: Web Audio tonları, titreşim, WAAPI titreme
 │   │   ├── history.ts      # günlük XP serisi: eksik gün doldurma, seviye eşikleri, hareketli ortalama
-│   │   └── store.ts        # localStorage + sunucu eşitlemesi, XP/seri, React hook'ları
+│   │   └── store.ts        # localStorage + sunucu eşitlemesi, XP/seri, deste damgası, React hook'ları
 │   ├── games/
 │   │   ├── questions.ts    # moda göre soru üreticileri
 │   │   ├── MatchGame.tsx   # eşleştirme (5+5 çift)
@@ -294,6 +295,24 @@ doğrulamasından geçmezse 400; >512 KB reddedilir). Akış: **çek → birleş
 sonra 1,5 sn gecikmeyle yeniden denenir ve `online` olayında tekrar eşitlenir. Statik yayında
 (GitHub Pages) `/api/progress` yoktur → sessizce yerel moda düşer, hata göstermez.
 
+### Yeni kayıt popup'ı (deste değişimi)
+
+Yeni ders notları içe aktarılıp `dist` derlendiğinde deste büyür; uygulama bunu **açılışta** fark eder
+ve eklenen kayıtları **bir kez** popup'ta gösterir (NL — TR, en fazla 20 satır, fazlası "… ve N tane
+daha"). Sunucu gerekmez: ağ yokken de çalışır, çünkü kaynak `src/data/*.json`.
+
+- Damga: `localStorage["okumo-trainer/deck"]` — cihazın **son gördüğü** kart kimlikleri listesi.
+  `detectNewDeckItems()` (store.ts) sayfada bir kez çalışır, damgayı günceller ve yeni kimlikleri
+  döndürür; karşılaştırma saf fonksiyon `newDeckIds(seen, all)` (`scripts/sync.test.ts`).
+- İlk açılış ya da bozuk/temizlenmiş damga: **sessizce temel alınır**, popup çıkmaz. Bozuk damga
+  düzeltilir, uygulama durmaz. Deste küçülse bile kalan kayıtlar "yeni" sayılmaz.
+- Kart kimliği sözleşmesi tek: kelime `id`, bağlaç `c:<id>`, fiil `v:<id>` (SRS anahtarı fiilde
+  `v:<id>:<form>`). Fiiller öneksiz listelenirse `describe()` çözemez ve popup satırı boş kalır —
+  23.09.2026'da `allIds` bu yüzden `v:` önekli hâle getirildi.
+- Doğrulama: `python3 ~/.hermes/cache/scratch/okumo_new_items_check.py [adres]` (damgayı kısaltıp
+  sayfayı yeniler: popup açılır, "Tamam" kapatır, ikinci açılışta çıkmaz). Salt okunur — ilerlemeye
+  dokunmaz.
+
 ---
 
 ## 6) Servis ve altyapı
@@ -316,12 +335,13 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 48 test / 7 dosya
+bun test               # 51 test / 7 dosya
 bun run lint           # biome check (CI'da aynı adım var)
 bunx tsc --noEmit      # tip kontrolü
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px üst çubuk
 python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # kaynak popup'ı + obsidian bağlantıları
 python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # tekrar takvimi en sağda (bugün) açılıyor mu
+python3 ~/.hermes/cache/scratch/okumo_new_items_check.py             # yeni kayıt popup'ı: sessiz ilk açılış, 4 yeni kelime
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
 ```

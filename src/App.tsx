@@ -6,6 +6,7 @@ import SessionGame from "./games/SessionGame";
 import { connectives, meta, verbs, words } from "./lib/data";
 import { isDue } from "./lib/srs";
 import {
+  detectNewDeckItems,
   exportProgress,
   levelOf,
   levelProgress,
@@ -63,6 +64,9 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
   },
 ];
 
+/** Yeni kayıt popup'ında listelenen en fazla satır — fazlası "… ve N tane daha" olur. */
+const NEW_ITEMS_SHOWN = 20;
+
 function describe(id: string): { nl: string; tr: string } | null {
   if (id.startsWith("c:")) {
     const c = connectives.find((x) => x.id === id.slice(2));
@@ -80,20 +84,38 @@ export default function App() {
   const progress = useProgress();
   const sync = useSyncState();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
+  const [newItems, setNewItems] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   const sourcesDialog = useRef<HTMLDialogElement>(null);
+  const newItemsDialog = useRef<HTMLDialogElement>(null);
 
   // Açılışta ve internet geri geldiğinde sunucuyla eşitle (sunucu yoksa yerel moda düşer).
   useEffect(() => startSync(), []);
 
-  const dueCount = useMemo(() => {
-    const all = [
+  // Destedeki tüm kart kimlikleri: tekrar sayacı ve yeni kayıt tespiti aynı listeyi kullanır.
+  // Fiil kimliği de `v:` önekli (SRS anahtarı `v:<id>:<form>`) — öneksiz hâlde `describe()`
+  // fiili çözemiyor ve popup satırı boş kalıyordu.
+  const allIds = useMemo(
+    () => [
       ...words.map((w) => w.id),
       ...connectives.map((c) => `c:${c.id}`),
-      ...verbs.map((v) => v.id),
-    ];
-    return all.filter((id) => isDue(progress.cards[id])).length;
-  }, [progress]);
+      ...verbs.map((v) => `v:${v.id}`),
+    ],
+    [],
+  );
+
+  // Eşitleme/açılışta deste büyümüşse (yeni ders notları içe aktarıldı) haber ver: bir kez.
+  useEffect(() => {
+    const added = detectNewDeckItems(allIds);
+    if (!added.length) return;
+    setNewItems(added);
+    if (!newItemsDialog.current?.open) newItemsDialog.current?.showModal();
+  }, [allIds]);
+
+  const dueCount = useMemo(
+    () => allIds.filter((id) => isDue(progress.cards[id])).length,
+    [allIds, progress],
+  );
 
   const total = words.length + connectives.length + verbs.length;
 
@@ -267,6 +289,40 @@ export default function App() {
               </ul>
               <div className="mt-4 flex justify-end">
                 <BigButton onClick={() => sourcesDialog.current?.close()}>Kapat</BigButton>
+              </div>
+            </dialog>
+
+            {/* Yeni kayıt popup'ı: deste son açılıştan sonra büyüdüyse (yeni ders notları
+                içe aktarıldı) bir kez açılır. Yerleşik <dialog>: odak tuzağı + ESC hazır. */}
+            <dialog
+              ref={newItemsDialog}
+              data-testid="new-items"
+              className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
+            >
+              <h2 className="font-display text-lg font-semibold">
+                🆕 {newItems.length} yeni kayıt geldi
+              </h2>
+              <p className="mt-1 text-xs text-inksoft">
+                Son açılıştan bu yana desteye eklenenler (yeni ders notları):
+              </p>
+              <ul className="mt-3 flex max-h-[45vh] flex-col gap-1 overflow-y-auto text-sm">
+                {newItems.slice(0, NEW_ITEMS_SHOWN).map((id) => {
+                  const info = describe(id);
+                  return info ? (
+                    <li key={id}>
+                      <span className="font-semibold">{info.nl}</span>{" "}
+                      <span className="text-inksoft">— {info.tr}</span>
+                    </li>
+                  ) : null;
+                })}
+              </ul>
+              {newItems.length > NEW_ITEMS_SHOWN ? (
+                <p className="mt-2 text-xs text-inksoft">
+                  … ve {newItems.length - NEW_ITEMS_SHOWN} tane daha
+                </p>
+              ) : null}
+              <div className="mt-4 flex justify-end">
+                <BigButton onClick={() => newItemsDialog.current?.close()}>Tamam</BigButton>
               </div>
             </dialog>
           </section>

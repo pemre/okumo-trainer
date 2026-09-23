@@ -41,6 +41,16 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
   };
 }
 
+/**
+ * Cihazın son gördüğü deste ile şimdiki desteyi karşılaştırır: yalnız sonradan eklenenler döner.
+ * Kayıt yoksa (ilk açılış, temizlenmiş depo) sessizce temel alınır — popup çıkmaz.
+ */
+export function newDeckIds(seen: unknown, all: string[]): string[] {
+  if (!Array.isArray(seen)) return [];
+  const known = new Set(seen as string[]);
+  return all.filter((id) => !known.has(id));
+}
+
 /** Sunucuya gönderilen gövdenin boyut sınırı (kart sayısı büyürse de küçük kalır). */
 export const MAX_PROGRESS_BYTES = 512 * 1024;
 

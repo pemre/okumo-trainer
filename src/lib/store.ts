@@ -2,7 +2,7 @@
 // Sunucu/internet yoksa oyun aynen devam eder; bağlantı gelince iki taraf birleştirilir.
 import { useSyncExternalStore } from "react";
 import { dayKey, emptyCard, review } from "./srs";
-import { MAX_PROGRESS_BYTES, mergeProgress, normalizeProgress } from "./sync";
+import { MAX_PROGRESS_BYTES, mergeProgress, newDeckIds, normalizeProgress } from "./sync";
 import type { CardState, Grade, Progress } from "./types";
 
 const KEY = "okumo-trainer/v1";
@@ -167,4 +167,33 @@ export const levelProgress = (xp: number) => (xp % 200) / 200;
 
 export function exportProgress(): string {
   return JSON.stringify(getProgress(), null, 2);
+}
+
+const DECK_KEY = "okumo-trainer/deck";
+
+/**
+ * Desteye son açılıştan sonra eklenen kayıtları döndürür ve "son görülen deste"yi günceller.
+ * Sayfada bir kez hesaplanır: StrictMode efekti iki kez çalıştırsa da sonuç değişmez (ikinci
+ * çağrı boş liste dönmez), böylece popup kaybolmaz.
+ * ponytail: tavan — tüm kimlik listesi localStorage'da tutulur (birkaç KB); deste MB'lara
+ * çıkarsa kimlik yerine `meta.generated` damgası + özet karşılaştırmasına geçilmeli.
+ */
+let newItems: string[] | undefined;
+
+export function detectNewDeckItems(all: string[]): string[] {
+  if (newItems === undefined) {
+    let seen: unknown = null;
+    try {
+      seen = JSON.parse(localStorage.getItem(DECK_KEY) ?? "null");
+    } catch {
+      /* bozuk kayıt: temel al, popup çıkmasın */
+    }
+    newItems = newDeckIds(seen, all);
+    try {
+      localStorage.setItem(DECK_KEY, JSON.stringify(all));
+    } catch {
+      /* kota dolu: tespit yine çalışır */
+    }
+  }
+  return newItems;
 }

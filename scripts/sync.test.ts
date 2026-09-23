@@ -1,7 +1,7 @@
 // İki cihazın ilerlemesini birleştiren mantığın sözleşmesi (bkz. README → "İlerleme ve eşitleme").
 import { describe, expect, test } from "bun:test";
 import { emptyCard } from "../src/lib/srs";
-import { mergeProgress, normalizeProgress } from "../src/lib/sync";
+import { mergeProgress, newDeckIds, normalizeProgress } from "../src/lib/sync";
 import type { Progress } from "../src/lib/types";
 
 const base = (over: Partial<Progress> = {}): Progress => ({
@@ -60,6 +60,21 @@ describe("mergeProgress", () => {
     const merged = mergeProgress(local, remote);
     expect(merged.daily).toEqual({ "2026-09-20": 40, "2026-09-21": 80, "2026-09-22": 5 });
     expect(mergeProgress(remote, local).daily).toEqual(merged.daily); // sıradan bağımsız
+  });
+});
+
+describe("newDeckIds", () => {
+  test("ilk açılış sessiz: kayıt yoksa hiçbiri yeni sayılmaz", () => {
+    expect(newDeckIds(null, ["a", "b"])).toEqual([]);
+    expect(newDeckIds(undefined, ["a"])).toEqual([]);
+    expect(newDeckIds("bozuk kayıt", ["a"])).toEqual([]);
+  });
+  test("yalnız sonradan eklenenler döner, sıra desteyi izler", () => {
+    expect(newDeckIds(["a", "b"], ["b", "c", "a", "d"])).toEqual(["c", "d"]);
+    expect(newDeckIds(["a", "b"], ["a", "b"])).toEqual([]);
+  });
+  test("deste küçülse bile kalanlar yeni sayılmaz", () => {
+    expect(newDeckIds(["a", "b", "c"], ["a"])).toEqual([]);
   });
 });
 
