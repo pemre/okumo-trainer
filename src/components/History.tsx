@@ -86,7 +86,18 @@ export function ActivityHeat({ daily }: { daily: Record<string, number> }) {
       <h2 className="font-display text-lg font-semibold">Tekrar takvimi</h2>
       <p className="mt-1 text-xs text-inksoft">Her kare bir gün; koyulaştıkça o gün daha çok XP.</p>
       <div className="mt-3 overflow-x-auto">
+        {/* Kütüphane kaydırmayı kendi iç kapsayıcısında yapar
+            (`.react-activity-calendar__scroll-container`), dışarıdaki sarmalayıcı taşmaz.
+            52 hafta kutuya sığmadığı için varsayılan konum en sağ (bugün) olsun; `ref` çocuklar
+            bağlandıktan sonra çalıştığı için iç kapsayıcı hazırdır. Genişlik veriden bağımsız
+            sabit olduğundan bir kez yeter, ilerleme sonradan yüklense de konum kaymaz. */}
         <ActivityCalendar
+          ref={(el) => {
+            const kaydirici = el?.querySelector<HTMLElement>(
+              ".react-activity-calendar__scroll-container",
+            );
+            if (kaydirici) kaydirici.scrollLeft = kaydirici.scrollWidth;
+          }}
           data={data}
           blockSize={9}
           blockMargin={3}

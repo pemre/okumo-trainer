@@ -24,9 +24,16 @@ describe("woorden.json", () => {
     expect(withSentence / woorden.items.length).toBeGreaterThan(0.8);
   });
 
-  test("eksik alan bırakılmamış (auto doldurma tamam)", () => {
+  test("eksik alan bırakılmamış (notlar tek doğruluk kaynağı)", () => {
     const eksik = woorden.items.filter((i) => i.eksik.length > 0);
     expect(eksik.map((i) => `${i.nl}:${i.eksik}`)).toEqual([]);
+  });
+
+  test("her kaynağın, dosyayı açan bir obsidian:// bağlantısı var", () => {
+    for (const s of woorden.meta.sources) {
+      expect(s.obsidian.startsWith("obsidian://open?vault=")).toBe(true);
+      expect(decodeURIComponent(s.obsidian)).toContain(s.file);
+    }
   });
 });
 

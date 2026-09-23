@@ -8,8 +8,6 @@ export interface WordItem {
   synoniem: string;
   type: "woord" | "ifade";
   bron: string;
-  auto: boolean;
-  note: string;
   eksik: string[];
 }
 

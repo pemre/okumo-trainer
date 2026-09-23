@@ -6,7 +6,8 @@ Hollandaca alıştırma uygulaması: **sınıf notlarından üretilmiş kelime/i
 
 okumo.dev'in dilini ödünç alır: krem zemin + terracotta aksan, Fraunces/Nunito Sans, yuvarlak
 "cozy" kartlar; tekrar planı SM-2'den sadeleştirilmiştir. Ana sayfada son 30 günün XP grafiği
-(recharts) ve yıllık tekrar takvimi (react-activity-calendar) vardır.
+(recharts) ve yıllık tekrar takvimi (react-activity-calendar) vardır; alttaki **📄 Veri kaynakları**
+popup'ı, verinin üretildiği ders notlarını `obsidian://` bağlantısıyla açar.
 
 ---
 
@@ -38,13 +39,16 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 | Port, URL, sunucu ucu | `server.mjs` + `README` "Servis ve altyapı" + SwiftBar eklentisi (`URL`, `PORT`) birlikte |
 | İlerleme/eşitleme mantığı | `src/lib/sync.ts` + `scripts/sync.test.ts` + README "İlerleme ve eşitleme" |
 | Ders notu klasörü değişirse | `OKUMO_NOTES_DIR` ile çalıştır, `import-notes.mjs` dokunulmaz |
-| Notlardaki eksik/hatalı alan | **Asla not dosyasını düzenleme** → `data-source/overrides.json` |
+| Notlardaki eksik/hatalı alan | Düzeltme **notun kendisine** yazılır (tablo hücresi; bullet 4 alanı taşımıyorsa tablo satırına çevrilir) → sonra `bun run import` + `bun test` |
 | Commit | Türkçe, emir kipi, tek satır: `eşleştirme: yanlışta kart titremesi` |
 
 Değişmez ilkeler:
 
-1. **Ders notları salt-okunurdur.** `~/Desktop/emre/4. Belgelik/Hollandaca dil kursu/*.md` hiçbir
-   durumda yazılmaz; düzeltmeler `data-source/overrides.json`'da tutulur.
+1. **Ders notları tek doğruluk kaynağıdır.** `~/Desktop/emre/4. Belgelik/Hollandaca dil kursu/*.md`
+   uygulamanın beslediği tek kaynaktır; bir alan eksik/hatalıysa düzeltme **nota** yazılır ve not
+   yeniden içe aktarılır (`bun run import`). Not yazımı elle onaylıdır ve notlar git'te değildir →
+   yazmadan önce kopya alınır. 23.09.2026'ya kadar kullanılan `data-source/overrides.json`
+   mekanizması bu yüzden kaldırıldı: 73 düzeltmenin tamamı notlara taşındı.
 2. **Repo'ya sır girmez.** API anahtarı, token, parola, .env, kişisel veri yok. Bu repo public.
 3. **Çevrimdışı çalışmak bir özelliktir.** Hiçbir özellik interneti zorunlu kılamaz (Çin/sınırlı
    bağlantı senaryosu). Ağ varsa eşitlenir, yoksa yerel ilerleme geçerlidir.
@@ -59,8 +63,8 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 45 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme
-bun run lint        # biome: lint + format kontrolü (8 uyarı tolere edilir, hata yok)
+bun test            # 46 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme
+bun run lint        # biome: lint + format kontrolü (1 uyarı tolere edilir, hata yok)
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
 bun run build       # dist/
@@ -81,10 +85,9 @@ okumo-trainer/
 ├── data-source/            # elle bakımı yapılan kaynaklar
 │   ├── verbs.csv           # 215 fiil: mastar + çekimler + ses kalıbı ailesi
 │   ├── patterns.md         # 14 ses kalıbı ailesi + istisnalar
-│   ├── connectieven.json   # bağlaç destesi (anlam, işlev, örnek cümle)
-│   └── overrides.json      # notlarda eksik/hatalı alanların düzeltmeleri
+│   └── connectieven.json   # bağlaç destesi (anlam, işlev, örnek cümle)
 ├── scripts/
-│   ├── import-notes.mjs    # Obsidian notları → src/data/*.json (notları SADECE okur)
+│   ├── import-notes.mjs    # Obsidian notları → src/data/*.json (+ obsidian:// bağlantıları)
 │   ├── srs.test.ts         # aralıklı tekrar, oturum seçimi, cevap denetimi
 │   ├── data.test.ts        # üretilen verinin sözleşmeleri
 │   ├── questions.test.ts   # soru üreticileri: her mod soru üretir, her cevap kabul kuralından geçer
@@ -92,7 +95,7 @@ okumo-trainer/
 │   ├── history.test.ts     # günlük seri: eksik gün, yaz saati geçişi, seviye eşikleri, ortalama
 │   └── sync.test.ts        # iki cihazın ilerlemesini birleştirme kuralları
 ├── src/
-│   ├── App.tsx             # ana sayfa (mod kartları, XP/seri, eşitleme durumu) + tur özeti
+│   ├── App.tsx             # ana sayfa (mod kartları, XP/seri, kaynak popup'ı) + tur özeti
 │   ├── components/ui.tsx   # CozyCard, Pill, BigButton, ProgressBar, TopBar
 │   ├── components/History.tsx # XpChart (recharts) + ActivityHeat (react-activity-calendar)
 │   ├── lib/
@@ -122,7 +125,9 @@ data-source/verbs.csv ───────────────────�
                                                               └─> ilerleme: localStorage ⇄ /api/progress ⇄ data/progress.json
 ```
 
-Notlar vault'ta durur (`OKUMO_NOTES_DIR` ile başka klasöre yönlendirilebilir).
+Notlar vault'ta durur (`OKUMO_NOTES_DIR` ile başka klasöre yönlendirilebilir); her kaynağın
+`obsidian://open?vault=…&file=…` bağlantısı üretilir (`OKUMO_VAULT_DIR`, varsayılan
+`/Users/user/Desktop/emre`; kasa adı klasör adıdır).
 
 ---
 
@@ -187,6 +192,10 @@ Ana sayfada iki görsel var; ikisi de `Progress.daily` (gün → o gün kazanıl
   kareler çizilir ama dolu gün yok; bir tur sonrası çubuk ve dolu kare oluşur, "henüz kayıt yok" kalkar).
 - react-activity-calendar v3 iki şeyi zorunlu tutar: `{date, count, level}` alanları ve bir `theme`
   (varsayılan tema gri). İkisi de `History.tsx` içinde ayarlıdır.
+- 364 gün kutuya sığmadığı için takvim yatay kaydırılır ve **varsayılan konum en sağdadır** (bugün):
+  kapsayıcının `ref`'i bağlanırken `scrollLeft = scrollWidth`. Genişlik veriden bağımsız sabit olduğu
+  için tek seferlik — ilerleme sonradan yüklense de konum kaymaz. (Mobilde kullanıcı her açılışta
+  bugünü görmek için sağa kaydırmak zorunda kalıyordu.)
 - Bu iki bağımlılık paketi büyütür (ham 792 KB / gzip 235 KB; öncesi 323 KB / 94 KB, yani ≈ +140 KB
   gzip). Kişisel + çevrimdışı kullanımda tek seferlik indirme olduğu için kabul edildi; kod bölmeye
   (lazy chunk) gidilmedi — gerekirse `React.lazy` ile grafik/takvim ayrı parçaya alınır.
@@ -211,15 +220,26 @@ yatay kaymıyor, chip'ler tek satır ve ekran içinde, başlık ≥60 px görün
 
 ## 4) Veri kuralları
 
-- Ders notları **hiçbir zaman** değiştirilmez; `import-notes.mjs` sadece okur.
-- Notta boş/hatalı alanlar `data-source/overrides.json` ile tamamlanır. Her düzeltme `auto: true`
-  işaretlenir ve uygulamanın ana sayfasında "✏️ Notlarımda eksik/hatalı olup doldurulan kayıtlar"
-  bölümünde listelenir — yani hangi bilginin nottan değil agent'tan geldiği her zaman görünür.
-- `override` alanları nottaki değeri **ezer** (öncelik: `override` > not).
+- **Notlar tek doğruluk kaynağıdır.** Eksik/hatalı alan düzeltmesi nota yazılır; `bun run import` ile
+  uygulamaya girer. Ayrı bir override dosyası ve "agent doldurdu" işareti yoktur (23.09.2026'da
+  kaldırıldı — uygulamadaki "✏️ doldurulan kayıtlar" bölümü de bu yüzden silindi).
+- Not yazımı elle onaylıdır ve **notlar git'te değildir**: yazmadan önce kopya alınır, değişiklik
+  özeti kullanıcıya gösterilir. Not şeması bozulmaz — yalnız hücre içerikleri değişir.
+- `import-notes.mjs` yazmaz, yalnız okur; notu güncelleyen şey agent/iş akışıdır (tek seferlik göç
+  betiği 2026-09-23'te çalıştırıldı, repoda durmaz).
 - Notlardaki tablo satırları: `Hollandaca | İngilizce | Türkçe | örnek cümle`. Cümle hücresi
   `—`/`–` ile bölünür; tek kelimelik hücre cümle sayılmaz (eşanlamlı/çeviri olarak sınıflanır).
+- **Parantez kuralı** (`stripParen`): tek sözcüklü parantez okunuş ipucudur, atılır (`komend (komınd)`
+  → `komend`); nokta, virgül ya da boşluk içeren parantez açıklamadır, korunur (`m.a.w.`,
+  `to spend (money, time)`). Bu yüzden notta `(…)` ile yazılan kısa ipucu uygulamada görünmez.
+- Cümle hücresi `NL — TR` biçiminde tutulur; çevirisi olmayan cümle varsa eksik sayılır.
 - `src/data/*.json` üretilmiştir: elle düzenlenmez, `bun run import` ile yenilenir, commit edilir.
-- Güncel veri: **85 kelime/ifade · 9 bağlaç · 215 fiil** (55 kayıt override ile tamamlandı, eksik: 0).
+- Güncel veri: **85 kelime/ifade · 9 bağlaç · 215 fiil** (eksik alan: 0).
+- **Kaynak popup'ı:** ana sayfanın altındaki "📄 Veri kaynakları (3)" düğmesi yerleşik `<dialog>`
+  (`showModal()`) açar; her satır notu Obsidian'da açar (`obsidian://open?vault=emre&file=…`), yanında
+  o nottan üretilen kayıt sayısı yazar. Kaynak listesi büyüdükçe sayfa uzamasın diye liste artık
+  yalnız popup'ta. Kapatma: ESC ya da **Kapat** (arkaya tıklayarak kapatma, `useKeyWithClickEvents`
+  a11y kuralını gereksiz tetiklediği için eklenmedi).
 
 ---
 
@@ -266,10 +286,12 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 45 test / 6 dosya
+bun test               # 46 test / 6 dosya
 bun run lint           # biome check (CI'da aynı adım var)
 bunx tsc --noEmit      # tip kontrolü
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px üst çubuk
+python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # kaynak popup'ı + obsidian bağlantıları
+python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # tekrar takvimi en sağda (bugün) açılıyor mu
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
 ```
@@ -302,6 +324,9 @@ scratch'te tutulur, repoya girmez.
   cron'u (mevcut Telegram/Home Assistant becerileriyle), kusursuz turda CSS konfeti, dokunmatikte
   görünmeyen `title=` ipuçları için tap-popover, no-JS `/liste` (Kobo/yazdırma), `mergeProgress`
   için rastgele özellik testi.
+- `uit elkaar halen` kaydının "losmaken" eşanlamlısı 23.09.2026'da düştü: nottaki tek kelimelik
+  hücre artık cümle taşıyor ve 4 sütunlu not şemasında `synoniem` için yer yok. Gerekirse nota
+  "Eşanlamlı" sütunu eklenip `columnsFromHeader`'a bir anahtar yazılır (o zaman notta görünür).
 - Telaffuz (edge-tts) düşünüldü ama eklenmedi: çevrimdışı senaryoda internet gerektirdiği için
   önbellekli ses üretimi tasarlanmadan girmesi doğru değil.
 - Konuşma pratiği (STT) kapsam dışı.

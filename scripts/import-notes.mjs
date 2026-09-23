@@ -1,5 +1,7 @@
 // Klas notlarını (Obsidian markdown) + fiil listesini uygulamanın okuduğu JSON'a çevirir.
-// Kullanım: bun scripts/import-notes.mjs   (notlar SADECE okunur, asla yazılmaz)
+// Kullanım: bun scripts/import-notes.mjs
+// Notlar tek doğruluk kaynağıdır: eksik/hatalı alan varsa düzeltme NOTA yazılır (eski
+// data-source/overrides.json mekanizması 2026-09-23'te kaldırıldı).
 
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -8,6 +10,8 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dir, "..");
 const NOTES_DIR =
   process.env.OKUMO_NOTES_DIR || "/Users/user/Desktop/emre/4. Belgelik/Hollandaca dil kursu";
+// Obsidian kasası: notları uygulamadan obsidian:// bağlantısıyla açabilmek için (vault adı = klasör adı).
+const VAULT_DIR = process.env.OKUMO_VAULT_DIR || "/Users/user/Desktop/emre";
 const SOURCE_DIR = path.join(ROOT, "data-source");
 const OUT_DIR = path.join(ROOT, "src", "data");
 
@@ -27,12 +31,22 @@ const clean = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
-// "komend (komınd)" → "komend" ; "m.a.w." gibi kısaltma parantezleri korunur
+// "komend (komınd)" → "komend": tek sözcüklü parantez okunuş/ipucu sayılır ve atılır.
+// Nokta, virgül ya da boşluk içeren parantez açıklamadır, korunur
+// ("m.a.w.", "to spend (money, time)", "to get, to pass (an exam)").
 const stripParen = (s) =>
   s
-    .replace(/\s*\(([^)]*)\)/g, (m, g) => (g.includes(".") ? m : ""))
+    .replace(/\s*\(([^)]*)\)/g, (m, g) => (/[.,\s]/.test(g) ? m : ""))
     .replace(/\s+/g, " ")
     .trim();
+
+/** Kasaya göreli yolu obsidian:// bağlantısına çevirir; kasa dışındaysa null. */
+function obsidianLink(file) {
+  const rel = path.relative(VAULT_DIR, path.join(NOTES_DIR, file));
+  if (!rel || rel.startsWith("..")) return null;
+  const yol = rel.split(path.sep).map(encodeURIComponent).join("/");
+  return `obsidian://open?vault=${encodeURIComponent(path.basename(VAULT_DIR))}&file=${yol}`;
+}
 
 const cells = (line) =>
   line
@@ -214,12 +228,9 @@ async function main() {
     const bron = /^\d{4}-\d{2}-\d{2}/.exec(f)?.[0] || f;
     for (const it of parsed) it.bron = bron;
     lists.push(parsed);
-    sources.push({ file: f, items: parsed.length });
+    sources.push({ file: f, items: parsed.length, obsidian: obsidianLink(f) });
   }
 
-  const overrides = existsSync(path.join(SOURCE_DIR, "overrides.json"))
-    ? JSON.parse(await readFile(path.join(SOURCE_DIR, "overrides.json"), "utf8"))
-    : {};
   const connectieven = existsSync(path.join(SOURCE_DIR, "connectieven.json"))
     ? JSON.parse(await readFile(path.join(SOURCE_DIR, "connectieven.json"), "utf8"))
     : [];
@@ -231,28 +242,23 @@ async function main() {
   const items = mergeItems(lists)
     .filter((it) => !connectiveKeys.has(ckey(it.nl)))
     .map((it) => {
-      const ov = overrides[norm(it.nl)] || {};
-      const nl = ov.nl || it.nl;
       const merged = {
-        id: norm(nl)
+        id: norm(it.nl)
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, ""),
-        nl,
-        en: ov.en || it.en || "",
-        tr: ov.tr || it.tr || "",
-        zin: ov.zin || it.zin || "",
-        zin_tr: ov.zin_tr || it.zin_tr || "",
-        synoniem: ov.synoniem || it.synoniem || "",
-        type: nl.trim().includes(" ") ? "ifade" : "woord",
+        nl: it.nl,
+        en: it.en || "",
+        tr: it.tr || "",
+        zin: it.zin || "",
+        zin_tr: it.zin_tr || "",
+        synoniem: it.synoniem || "",
+        type: it.nl.trim().includes(" ") ? "ifade" : "woord",
         bron: it.bron,
-        auto: !!ov.auto,
-        note: ov.note || "",
         eksik: [],
       };
       if (!merged.tr) merged.eksik.push("tr");
       if (!merged.en) merged.eksik.push("en");
       if (!merged.zin) merged.eksik.push("zin");
-      if (!merged.tr || !merged.zin) merged.auto = true;
       return merged;
     });
 
@@ -285,11 +291,8 @@ async function main() {
   await write("werkwoorden.json", { meta, items: werkwoorden });
 
   const eksik = items.filter((i) => i.eksik.length);
-  const auto = items.filter((i) => i.auto);
   console.log(`kaynak       : ${sources.map((s) => `${s.file}=${s.items}`).join(", ")}`);
-  console.log(
-    `kelime/ifade : ${items.length}  (auto doldurulmuş: ${auto.length}, hâlâ eksik: ${eksik.length})`,
-  );
+  console.log(`kelime/ifade : ${items.length}  (eksik alanlı: ${eksik.length})`);
   console.log(`bağlaç       : ${connectieven.length}   fiil: ${werkwoorden.length}`);
   if (eksik.length) console.log(eksik.map((e) => `${e.nl}[${e.eksik}]`).join(" | "));
 }

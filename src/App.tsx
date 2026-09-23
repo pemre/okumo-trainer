@@ -81,6 +81,7 @@ export default function App() {
   const sync = useSyncState();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const fileInput = useRef<HTMLInputElement>(null);
+  const sourcesDialog = useRef<HTMLDialogElement>(null);
 
   // Açılışta ve internet geri geldiğinde sunucuyla eşitle (sunucu yoksa yerel moda düşer).
   useEffect(() => startSync(), []);
@@ -94,7 +95,6 @@ export default function App() {
     return all.filter((id) => isDue(progress.cards[id])).length;
   }, [progress]);
 
-  const reviewable = useMemo(() => words.filter((w) => w.auto || w.note), []);
   const total = words.length + connectives.length + verbs.length;
 
   function startGame(mode: ModeId) {
@@ -193,32 +193,14 @@ export default function App() {
               ))}
             </div>
 
-            <details className="rounded-cozy bg-surface p-4 shadow-cozy">
-              <summary className="cursor-pointer font-display text-lg font-semibold">
-                ✏️ Notlarımda eksik/hatalı olup doldurulan {reviewable.length} kayıt
-              </summary>
-              <p className="mt-2 text-sm text-inksoft">
-                Bunlar ders notlarında çevirisi/örneği boş ya da yazımı hatalı olan kayıtlar;
-                uygulamada kullanılabilmeleri için tamamlandı. Notların kendisine dokunulmadı.
-              </p>
-              <ul className="mt-3 flex flex-col gap-1 text-sm">
-                {reviewable.map((w) => (
-                  <li key={w.id} className="flex flex-wrap gap-x-2">
-                    <span className="font-semibold">{w.nl}</span>
-                    <span className="text-inksoft">{w.tr}</span>
-                    {w.note ? <span className="text-ambertext">· {w.note}</span> : null}
-                  </li>
-                ))}
-              </ul>
-            </details>
-
             <div className="flex flex-wrap items-center gap-3 text-sm text-inksoft">
-              <span>
-                Veri:{" "}
-                {meta.sources
-                  .map((s) => `${s.file.replace(" Hollandaca dil kursu.md", "")}`)
-                  .join(", ")}
-              </span>
+              <button
+                type="button"
+                onClick={() => sourcesDialog.current?.showModal()}
+                className="underline"
+              >
+                📄 Veri kaynakları ({meta.sources.length})
+              </button>
               <button type="button" onClick={downloadProgress} className="underline">
                 İlerlemeyi indir
               </button>
@@ -260,6 +242,33 @@ export default function App() {
               />
               <span className="ml-auto">{total} kayıt</span>
             </div>
+
+            {/* Kaynak listesi popup: dosyalar obsidian:// bağlantısı (kasa "emre").
+                Yerleşik <dialog> + showModal(): odak tuzağı, ESC ve arka plan karartması hazır gelir.
+                Kapatma: ESC ya da "Kapat" düğmesi (arkaya tıklama a11y lint'ini gereksiz tetiklerdi). */}
+            <dialog
+              ref={sourcesDialog}
+              className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
+            >
+              <h2 className="font-display text-lg font-semibold">Veri kaynakları</h2>
+              <p className="mt-1 text-xs text-inksoft">
+                Uygulamadaki {total} kayıt bu ders notlarından üretilir. Bağlantılar notu
+                Obsidian'da açar (kasa: emre).
+              </p>
+              <ul className="mt-3 flex flex-col gap-2 text-sm">
+                {meta.sources.map((s) => (
+                  <li key={s.file} className="flex items-baseline gap-2">
+                    <a href={s.obsidian} className="underline">
+                      {s.file.replace(" Hollandaca dil kursu.md", "")}
+                    </a>
+                    <span className="text-inksoft">· {s.items} kayıt</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex justify-end">
+                <BigButton onClick={() => sourcesDialog.current?.close()}>Kapat</BigButton>
+              </div>
+            </dialog>
           </section>
         ) : null}
 
