@@ -55,7 +55,7 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 17 test: SRS, veri sözleşmeleri, eşitleme birleştirme
+bun test            # 30 test: soru sözleşmeleri, SRS, veri sözleşmeleri, eşitleme birleştirme
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
 bun run build       # dist/
@@ -82,6 +82,7 @@ okumo-trainer/
 │   ├── import-notes.mjs    # Obsidian notları → src/data/*.json (notları SADECE okur)
 │   ├── srs.test.ts         # aralıklı tekrar, oturum seçimi, cevap denetimi
 │   ├── data.test.ts        # üretilen verinin sözleşmeleri
+│   ├── questions.test.ts   # soru üreticileri: her mod soru üretir, her cevap kabul kuralından geçer
 │   └── sync.test.ts        # iki cihazın ilerlemesini birleştirme kuralları
 ├── src/
 │   ├── App.tsx             # ana sayfa (mod kartları, XP/seri, eşitleme durumu) + tur özeti
@@ -183,7 +184,7 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 17 test / 3 dosya
+bun test               # 30 test / 4 dosya
 bunx tsc --noEmit      # tip kontrolü
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}
