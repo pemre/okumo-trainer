@@ -16,7 +16,7 @@ export type Lang = "tr" | "en";
 /** Supported languages (the canonical set; **the order belongs to the user**, see `langs`). */
 export const LANGS: Lang[] = ["tr", "en"];
 
-/** Dil adları kendi dilinde: EN modunda da "Türkçe" yazar, geri dönüş yolu kaybolmaz. */
+/** Language names in their own language: shows "Türkçe" even in EN mode, so the way back is never lost. */
 export const LANG_ADI: Record<Lang, string> = { tr: "Türkçe", en: "English" };
 
 /** Verb family (sound-pattern) code → English name. The data only carries the Turkish name. */
