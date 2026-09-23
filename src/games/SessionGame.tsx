@@ -12,7 +12,7 @@ export default function SessionGame({
   mode,
   onFinish,
 }: {
-  mode: "choice" | "type" | "connect" | "verbs";
+  mode: "choice" | "type" | "scramble" | "connect" | "verbs";
   onFinish: (r: GameResult) => void;
 }) {
   const questions = useMemo<Question[]>(
@@ -22,6 +22,7 @@ export default function SessionGame({
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
+  const [order, setOrder] = useState<number[]>([]); // scramble: seçilen kelime çiplerinin sırası
   const [state, setState] = useState<"asking" | "right" | "wrong">("asking");
   const grades = useRef<Record<string, Grade>>({});
   const correctCount = useRef(0);
@@ -64,6 +65,7 @@ export default function SessionGame({
     setIndex((i) => i + 1);
     setInput("");
     setPicked(null);
+    setOrder([]);
     setState("asking");
   }
 
@@ -113,7 +115,56 @@ export default function SessionGame({
                 </button>
               );
             })
-          : (
+          : q.kind === "scramble"
+            ? (() => {
+                const chips = q.words ?? [];
+                const built = order.map((i) => chips[i]).join(" ");
+                return (
+                  <div className="flex flex-col gap-3">
+                    <div
+                      data-testid="scramble-built"
+                      className="rounded-cozy min-h-[3.25rem] bg-surface px-4 py-3 text-lg shadow-cozy"
+                    >
+                      {built || <span className="text-inksoft">Kelimelere sırayla dokun…</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {chips.map((word, i) => {
+                        const used = order.includes(i);
+                        return (
+                          <button
+                            // biome-ignore lint/suspicious/noArrayIndexKey: aynı kelime birden çok kez geçebilir
+                            key={`${word}-${i}`}
+                            type="button"
+                            data-testid={`chip-${word}`}
+                            disabled={used || state !== "asking"}
+                            onClick={() => setOrder((o) => [...o, i])}
+                            className={`rounded-full px-3 py-2 font-semibold shadow-cozy transition-all ${
+                              used ? "bg-sand/70 text-inksoft opacity-40" : "bg-surface hover:brightness-[1.03]"
+                            }`}
+                          >
+                            {word}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {state === "asking" ? (
+                      <div className="flex items-center gap-3">
+                        <BigButton onClick={() => settle(checkTyped(built, q.answer))}>Kontrol et</BigButton>
+                        {order.length ? (
+                          <button
+                            type="button"
+                            onClick={() => setOrder((o) => o.slice(0, -1))}
+                            className="text-sm text-inksoft underline"
+                          >
+                            Geri al
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })()
+            : (
               <form
                 className="flex flex-col gap-3"
                 onSubmit={(e) => {

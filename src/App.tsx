@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BigButton, CozyCard, Pill, ProgressBar, TopBar } from "./components/ui";
 import MatchGame, { type GameResult } from "./games/MatchGame";
 import SessionGame from "./games/SessionGame";
@@ -11,7 +11,9 @@ import {
   recordSession,
   replaceProgress,
   resetProgress,
+  startSync,
   useProgress,
+  useSyncState,
 } from "./lib/store";
 import type { ModeId } from "./lib/types";
 
@@ -29,6 +31,12 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
   },
   { id: "choice", icon: "✅", title: "Çoktan seçmeli", desc: "NL→TR, NL→EN ve TR→NL yönlerinde 4 şıklı sorular." },
   { id: "type", icon: "⌨️", title: "Yazma", desc: "Türkçesi/İngilizcesi verilir, Hollandacasını yazarsın." },
+  {
+    id: "scramble",
+    icon: "🧩",
+    title: "Cümle dizme",
+    desc: "Türkçesi verilir, karışık kelimeleri doğru sıraya dizip Hollandaca cümleyi kurarsın.",
+  },
   {
     id: "connect",
     icon: "🔗",
@@ -54,8 +62,12 @@ function describe(id: string): { nl: string; tr: string } | null {
 
 export default function App() {
   const progress = useProgress();
+  const sync = useSyncState();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Açılışta ve internet geri geldiğinde sunucuyla eşitle (sunucu yoksa yerel moda düşer).
+  useEffect(() => startSync(), []);
 
   const dueCount = useMemo(() => {
     const all = [
@@ -98,6 +110,17 @@ export default function App() {
             <Pill title="Seri (üst üste oynanan gün)">🔥 {progress.streak}</Pill>
             <Pill title="Toplam XP">⭐ {progress.xp}</Pill>
             <Pill title={`Seviye ${level}`}>Sv {level}</Pill>
+            <Pill
+              title={
+                sync === "synced"
+                  ? "İlerleme yerel sunucuyla eşitlendi"
+                  : sync === "offline"
+                    ? "Sunucuya ulaşılamıyor — ilerleme bu cihazda birikiyor, bağlantı gelince eşitlenir"
+                    : "Eşitleme bekleniyor"
+              }
+            >
+              {sync === "synced" ? "☁️" : sync === "offline" ? "📴" : "💾"}
+            </Pill>
           </>
         }
       />

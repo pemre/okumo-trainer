@@ -43,6 +43,8 @@ export interface CardState {
   lapses: number;
   due: string;
   lastSeen: string | null;
+  /** Son güncelleme (epoch ms) — cihazlar arası birleştirmede hangi tarafın yeni olduğunu belirler. */
+  at: number;
 }
 
 export interface Progress {
@@ -54,9 +56,11 @@ export interface Progress {
   lastDay: string | null;
   daysPlayed: string[];
   sessions: number;
+  /** Son yerel değişiklik zamanı (epoch ms). */
+  updatedAt: number;
 }
 
-export type ModeId = "match" | "choice" | "type" | "connect" | "verbs";
+export type ModeId = "match" | "choice" | "type" | "scramble" | "connect" | "verbs";
 
 /** 0 = bilemedim, 1 = zor, 2 = iyi, 3 = kolay */
 export type Grade = 0 | 1 | 2 | 3;

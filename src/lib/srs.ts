@@ -15,8 +15,8 @@ export function addDays(d: Date, days: number): Date {
   return copy;
 }
 
-export function emptyCard(today: string = dayKey()): CardState {
-  return { ease: 2.3, interval: 0, reps: 0, lapses: 0, due: today, lastSeen: null };
+export function emptyCard(today: string = dayKey(), at = Date.now()): CardState {
+  return { ease: 2.3, interval: 0, reps: 0, lapses: 0, due: today, lastSeen: null, at };
 }
 
 export function review(card: CardState, grade: Grade, now: Date = new Date()): CardState {
@@ -30,6 +30,7 @@ export function review(card: CardState, grade: Grade, now: Date = new Date()): C
       lapses: card.lapses + 1,
       due: today, // aynı gün tekrar sorulur
       lastSeen: today,
+      at: now.getTime(),
     };
   }
   const ease = clamp(card.ease + (0.1 - (3 - grade) * 0.09), 1.3, 2.8);
@@ -42,6 +43,7 @@ export function review(card: CardState, grade: Grade, now: Date = new Date()): C
     interval,
     due: dayKey(addDays(now, interval)),
     lastSeen: today,
+    at: now.getTime(),
   };
 }
 

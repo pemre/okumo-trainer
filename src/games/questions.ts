@@ -4,13 +4,14 @@ import { connectives, verbs, words } from "../lib/data";
 
 export interface Question {
   id: string; // SRS kart anahtarı
-  kind: "choice" | "type";
+  kind: "choice" | "type" | "scramble";
   prompt: string;
   promptSub?: string;
   hint?: string;
   answer: string;
   alternatives?: string[];
   options?: string[];
+  words?: string[]; // scramble: karışık kelime çipleri
   detail: { nl: string; en: string; tr: string; zin?: string; zin_tr?: string };
 }
 
@@ -110,6 +111,22 @@ function verbQuestion(verb: Verb, form: VerbForm): Question {
   };
 }
 
+function scrambleQuestion(item: WordItem): Question {
+  const words = item.zin.split(/\s+/);
+  return {
+    id: item.id,
+    kind: "scramble",
+    prompt: item.zin_tr || item.tr,
+    promptSub: "Kelimeleri doğru sıraya koy",
+    hint: item.nl,
+    answer: item.zin,
+    words: shuffle(words),
+    detail: wordDetail(item),
+  };
+}
+
+const usableForScramble = (w: WordItem) => w.zin.split(/\s+/).length >= 4 && w.zin.length <= 70;
+
 export function buildQuestions(
   mode: ModeId,
   size: number,
@@ -129,8 +146,10 @@ export function buildQuestions(
     );
     return picked.map((p, i) => verbQuestion(p.verb, VERB_FORMS[i % VERB_FORMS.length]));
   }
-  const picked = pickSession(words, cards, size, new Date(), Math.random);
+  const pool = mode === "scramble" ? words.filter(usableForScramble) : words;
+  const picked = pickSession(pool, cards, size, new Date(), Math.random);
   return picked.map((w, i) => {
+    if (mode === "scramble") return scrambleQuestion(w);
     if (mode === "choice") {
       const dirs = ["nl-tr", "nl-en", "tr-nl"] as const;
       return choiceQuestion(w, dirs[i % dirs.length]);

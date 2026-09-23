@@ -390,7 +390,31 @@
  "uit elkaar halen": {
   "en": "to take apart",
   "tr": "parçalarına ayırmak, sökmek",
+  "zin": "Kun je deze kast uit elkaar halen?",
+  "zin_tr": "Bu dolabı sökebilir misin?",
   "synoniem": "losmaken",
   "auto": true
- }
+ },
+ "ik heb pech, mijn auto is kapot": {
+  "en": "I'm unlucky, my car has broken down",
+  "zin_tr": "Şanssızım, arabam bozuldu.",
+  "auto": true
+ },
+ "trots": { "zin_tr": "Yeni projemle gurur duyuyorum." },
+ "controle": { "zin_tr": "Durum üzerinde hiç kontrolüm yok." },
+ "probleem": { "zin_tr": "Sunucuyla büyük bir sorunumuz var." },
+ "antwoord": { "zin_tr": "Hâlâ ondan bir cevap bekliyorum." },
+ "enthousiast": { "zin_tr": "Yeni fikre çok hevesli." },
+ "tevreden": { "zin_tr": "Sonuçtan memnunum." },
+ "verantwoordelijk": { "zin_tr": "Takımdan o sorumlu." },
+ "klaar": { "zin_tr": "İşimi bitirdim." },
+ "behoefte": { "zin_tr": "Biraz dinlenmeye ihtiyacım var." },
+ "benieuwd": { "zin_tr": "Sonucu merak ediyorum." },
+ "plezier": { "zin_tr": "Partide çok eğlendik." },
+ "verslaafd": { "zin_tr": "Telefonuna bağımlı." },
+ "risico": { "zin_tr": "Bu proje büyük bir risk taşıyor." },
+ "ervaring": { "zin_tr": "Programlama konusunda çok deneyimim var." },
+ "zin": { "zin_tr": "Bu akşam yemek yapmaya hiç niyetim yok." },
+ "bang": { "zin_tr": "Örümceklerden korkuyorum." },
+ "tamelijk": { "zin_tr": "Oldukça stres dayanıklı olman gerekiyor." }
 }

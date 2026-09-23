@@ -74,6 +74,12 @@ function tableRowToItem(row, map) {
     const last = row[row.length - 1];
     if (last && !last.includes(" ") && last !== nl) item.synoniem = last; // ör. "uit elkaar halen … losmaken"
   }
+  // Tek kelimelik hücre cümle değildir (eşanlamlı ya da çeviri olabilir)
+  if (item.zin && !item.zin.includes(" ")) {
+    if (TURKISH_HINT.test(item.zin)) item.tr ||= item.zin;
+    else item.synoniem ||= item.zin;
+    item.zin = "";
+  }
   return item;
 }
 
