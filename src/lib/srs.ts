@@ -135,3 +135,11 @@ export function checkTyped(input: string, expected: string): boolean {
     .filter(Boolean);
   return variants.includes(a) || variants.map(noArticle).includes(noArticle(a));
 }
+
+/**
+ * Uygulamanın cevap kabul kuralı: asıl cevap ya da alternatiflerden biri tutuyorsa doğru.
+ * Tek yerde tutulur ki arayüz ve testler ayrı kurallar yürütmesin.
+ */
+export function checkAnswer(input: string, answers: (string | undefined)[]): boolean {
+  return answers.some((a): a is string => typeof a === "string" && a.trim() !== "" && checkTyped(input, a));
+}

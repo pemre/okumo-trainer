@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { BigButton, ProgressBar } from "../components/ui";
 import { getProgress } from "../lib/store";
-import { checkTyped } from "../lib/srs";
+import { checkAnswer } from "../lib/srs";
 import type { Grade } from "../lib/types";
 import { buildQuestions, type Question } from "./questions";
 import type { GameResult } from "./MatchGame";
@@ -42,10 +42,7 @@ export default function SessionGame({
   }
 
   function submitTyped() {
-    const ok =
-      checkTyped(input, q.answer) ||
-      (q.alternatives ?? []).some((alt) => checkTyped(input, alt));
-    settle(ok);
+    settle(checkAnswer(input, [q.answer, ...(q.alternatives ?? [])]));
   }
 
   function next() {
@@ -149,7 +146,7 @@ export default function SessionGame({
                     </div>
                     {state === "asking" ? (
                       <div className="flex items-center gap-3">
-                        <BigButton onClick={() => settle(checkTyped(built, q.answer))}>Kontrol et</BigButton>
+                        <BigButton onClick={() => settle(checkAnswer(built, [q.answer]))}>Kontrol et</BigButton>
                         {order.length ? (
                           <button
                             type="button"
@@ -183,7 +180,7 @@ export default function SessionGame({
                   disabled={state !== "asking"}
                   className="rounded-cozy bg-surface px-4 py-3 text-lg shadow-cozy outline-none ring-accent focus:ring-2 disabled:opacity-70"
                 />
-                {state === "asking" ? <BigButton>Kontrol et</BigButton> : null}
+                {state === "asking" ? <BigButton onClick={submitTyped}>Kontrol et</BigButton> : null}
               </form>
             )}
       </div>

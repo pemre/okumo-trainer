@@ -27,7 +27,8 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 
 | Tetikleyici | Beklenen davranış |
 |---|---|
-| Yeni oyun modu | `src/games/questions.ts`'e soru üretici + `App.tsx` MODES kartı + README "Oyun modları" satırı + `scripts/data.test.ts`'e kapsam testi |
+| Yeni oyun modu | `src/games/questions.ts`'e soru üretici + `App.tsx` MODES kartı + README "Oyun modları" satırı + `scripts/questions.test.ts`'e kapsam testi |
+| Yeni etkileşim öğesi (düğme, çip, form) | Tarayıcı duman testinde **tıklanarak** doğrulanır, sadece klavye (Enter) ile geçilmez — `BigButton` `type="button"`'dır, formu kendiliğinden göndermez |
 | Veri şeması değişikliği | `src/lib/types.ts` + `import-notes.mjs` + `scripts/data.test.ts` + README "Veri kuralları" birlikte değişir |
 | Yeni komut / bağımlılık | `package.json` + README "Komutlar" tablosu |
 | Port, URL, sunucu ucu | `server.mjs` + `README` "Servis ve altyapı" + SwiftBar eklentisi (`URL`, `PORT`) birlikte |
@@ -190,7 +191,10 @@ curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress
 
 Değişiklikten sonra beklenen kanıt: testler geçer, tip kontrolü temiz, derleme çalışır, `/health`
 yanıt verir ve oynanan modun tarayıcıdan elle doğrulanması (eşleştirme → diğer modlar → özet →
-`localStorage` yazımı). Tarayıcı duman testi yerel scratica tutulur, repoya girmez.
+`localStorage` yazımı). Yazmalı adımlar **iki yoldan** denenir: Enter ile gönderme ve "Kontrol et"
+düğmesine tıklama — 23.09.2026'da düğme `onClick`'siz kaldığı için yazma alıştırmaları yalnızca
+Enter ile çalışıyordu ve testler Enter kullandığı için görülmedi. Tarayıcı duman testleri yerel
+scratch'te tutulur, repoya girmez.
 
 ---
 
