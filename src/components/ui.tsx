@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import { LANG_ADI, LANGS, toggleLang, useT } from "../lib/i18n";
 
 export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => void }) {
+  const { t } = useT();
   return (
     <header className="sticky top-0 z-20 flex flex-nowrap items-center gap-2 border-b border-surface2 bg-sand/90 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
       {onHome ? (
@@ -8,7 +10,7 @@ export function TopBar({ right, onHome }: { right?: ReactNode; onHome?: () => vo
           type="button"
           onClick={onHome}
           className="-ml-1 shrink-0 rounded-full px-2 py-1 text-inksoft hover:bg-surface2"
-          aria-label="Ana sayfa"
+          aria-label={t("Ana sayfa")}
         >
           ←
         </button>
@@ -95,6 +97,43 @@ export function BigButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Sağ üstteki küçük dil menüsü: hangi arayüz dilleri açık (TR / EN / ikisi).
+ * Yerleşik `<details>`: JS durumu yok, tıklayınca açılır; seçenek işaretlenince açık kalır
+ * (ikinci dili de işaretleyebilmek için). Son dili kapatma denemesi `toggleLang` içinde yok sayılır.
+ * ponytail: tavan — dışa tıklayınca kapanmaz (özet tekrar tıklanır); gerekirse document click dinleyicisi.
+ */
+export function LangMenu() {
+  const { langs, t } = useT();
+  return (
+    <details className="relative" data-testid="lang-menu">
+      <summary
+        title={t("Arayüz dilleri")}
+        className="cursor-pointer list-none whitespace-nowrap rounded-full bg-surface px-2 py-0.5 font-semibold text-inksoft shadow-cozy sm:px-3 sm:py-1"
+      >
+        🌐 {langs.map((l) => l.toUpperCase()).join("+")}
+      </summary>
+      <div className="absolute right-0 z-30 mt-2 w-60 rounded-cozy bg-surface p-3 text-left shadow-cozy">
+        <div className="text-xs font-semibold">{t("Arayüz dilleri")}</div>
+        {LANGS.map((l) => (
+          <label key={l} className="mt-2 flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              data-testid={`lang-${l}`}
+              checked={langs.includes(l)}
+              onChange={() => toggleLang(l)}
+            />
+            {LANG_ADI[l]} <span className="text-inksoft">({l.toUpperCase()})</span>
+          </label>
+        ))}
+        <p className="mt-2 text-xs text-inksoft">
+          {t("En az bir dil açık kalır; çeviriler açık dillere göre gösterilir.")}
+        </p>
+      </div>
+    </details>
   );
 }
 

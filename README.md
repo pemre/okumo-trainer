@@ -10,7 +10,8 @@ okumo.dev'in dilini ödünç alır: krem zemin + terracotta aksan, Fraunces/Nuni
 popup'ı, verinin üretildiği ders notlarını `obsidian://` bağlantısıyla açar. Yeni ders notları içe
 aktarıldığında desteye eklenen kayıtlar açılışta **🆕 yeni kayıt popup'ı** ile bir kez haber verilir;
 alttaki **kalıcı "N kayıt"** düğmesi ise destenin **tamamını** popup'ta listeler (kelime/bağlaç/fiil
-gruplu, alfabetik).
+gruplu, alfabetik, aramalı). Sağ üstteki 🌐 menüsü **arayüz dillerini** (TR / EN / ikisi) açar-kapatır —
+arayüz metinleri ve kelime çevirileri açık dillere göre gösterilir.
 
 ---
 
@@ -41,6 +42,7 @@ Steering kuralları (Kiro tarzı: tetikleyici → beklenen davranış):
 | Yeni komut / bağımlılık | `package.json` + README "Komutlar" tablosu |
 | Port, URL, sunucu ucu | `server.mjs` + `README` "Servis ve altyapı" + SwiftBar eklentisi (`URL`, `PORT`) birlikte |
 | İlerleme/eşitleme ve deste değişimi | `src/lib/sync.ts` + `scripts/sync.test.ts` + README "İlerleme ve eşitleme" (yeni kayıt popup'ı dâhil) |
+| Yeni arayüz metni / çeviri | Metin `t("…")` ile sarılır + `src/lib/i18n.ts` EN sözlüğüne bir satır + `scripts/i18n.test.ts`; sözlükte karşılık yoksa Türkçe'ye düşer |
 | Ders notu klasörü değişirse | `OKUMO_NOTES_DIR` ile çalıştır, `import-notes.mjs` dokunulmaz |
 | Notlardaki eksik/hatalı alan | Düzeltme **notun kendisine** yazılır (tablo hücresi; bullet 4 alanı taşımıyorsa tablo satırına çevrilir) → sonra `bun run import` + `bun test` |
 | Commit | Türkçe, emir kipi, tek satır: `eşleştirme: yanlışta kart titremesi` |
@@ -66,7 +68,7 @@ Değişmez ilkeler:
 ```bash
 bun install
 bun run import      # sınıf notlarını okur → src/data/*.json
-bun test            # 51 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme, not ayrıştırıcısı
+bun test            # 63 test: grafik serisi, bas geri bildirimi, soru sözleşmeleri, SRS, veri, eşitleme, not ayrıştırıcısı, arayüz dilleri
 bun run lint        # biome: lint + format kontrolü (1 uyarı tolere edilir, hata yok)
 bunx tsc --noEmit   # tip kontrolü
 bun run dev         # geliştirme (Vite, http://localhost:5173)
@@ -336,6 +338,39 @@ Ana sayfanın altındaki **"N kayıt"** düğmesi (eskiden düz metindi) desteni
   temizleme, yeniden açılışta sıfır), bilinen kayıt listede, "Kapat" ve ESC kapatıyor, 375 px'te
   taşma yok. Salt okunur.
 
+### Arayüz dilleri (3 dilli: TR + EN → Hollandaca)
+
+Sağ üstteki **🌐 menüsü** (yerleşik `<details>`, `data-testid="lang-menu"`) arayüz dillerini açar/kapatır:
+`TR`, `EN` ya da `TR+EN`. Seçim `localStorage["okumo-trainer/langs"]`'ta durur; **en az bir dil açık
+kalır** (son dili kapatma denemesi yok sayılır). Varsayılan: ikisi de açık (uygulamanın bugünkü 3 dilli
+hâli). Kapatılan dil **hem arayüz metinlerinden hem veri çevirilerinden** çıkar; tek değerli dar alanlar
+(takvim ay adları) açık dillerin **ilki**ni kullanır.
+
+- **Çeviri katmanı: `src/lib/i18n.ts`.** `react-intl` bilinçli olarak kullanılmadı: ~95 satırlık metin
+  için ICU + extraction zinciri ağır olurdu, üstelik uygulama bağımlılıksız/çevrimdışı çalışıyor.
+  - **msgid = Türkçe özgün metin**: kullanım `t("Kapat")`, sözlük `EN["Kapat"] = "Close"`. Karşılık
+    yoksa Türkçe'ye düşer → yeni metin eklerken çeviri unutulsa da ekran bozulmaz.
+  - İki dil açıkken `translate` metinleri `TR · EN` biçiminde birleştirir; yer tutucular `{ad}` ile
+    (`t("{n} kayıt", { n: 335 })`).
+  - Veri çevirisi `ceviri(ls, { tr, en })`: açık dillerin alanlarını birleştirir; açık dilde alan yoksa
+    elde olanı gösterir (uydurma yok, boş satır yok).
+  - Bileşenler `const { t, ceviri, langs } = useT()` kullanır (`useSyncExternalStore`): dil değişince
+    yalnız abone bileşen yeniden çizilir, global mutasyon yok.
+- **Sorular da dile uyar** (`buildQuestions(mode, size, cards, ls)`): TR-only'de yönler NL↔TR, EN-only'de
+  NL↔EN, iki dilde bugünkü karışım (NL→TR, NL→EN, TR→NL). Oyun turu başlarken **diller sabitlenir**
+  (`useState(getLangs)`): tur ortasında dil değişse sorular yerinden oynamaz, yalnız metinler/bilgi
+  satırları anında yeni dile geçer.
+- **Bilinen sınırlar (veri kaynaklı, uydurma çeviri yapılmaz):** `functie` (bağlaç işlev etiketi) ve
+  cümle çevirileri (`zin_tr`) veride yalnız Türkçe → TR kapalıyken bağlaç ipucu gösterilmez, cümle
+  dizmede cümle çevirisi yerine kelime anlamı kullanılır. Fiil ailesi adı için 15 ses kalıbı kodu
+  `FAMILIE_EN` ile çevrilir (Türkçe adın İngilizcesi veride yok).
+- **Yeni dil eklemek** (örn. Almanca): `LANGS` + `LANG_ADI` + bir sözlük + `MONTHS` satırı; menü
+  `LANGS`'ten otomatik üretilir. Üçüncü dilde `TR · DE` gibi birleşimler de aynı kuralla çalışır.
+- Doğrulama: `python3 ~/.hermes/cache/scratch/okumo_lang_menu_check.py [adres]` — varsayılan TR+EN,
+  EN kapatınca TR'ye dönüş, TR kapatınca İngilizce arayüz + İngilizce çeviriler, son dilin
+  kapatılamaması, yenilemede kalıcılık, oyun ipucu/geri bildirim uyumu, 375 px taşma yok.
+  `/api/progress` kesilir → test oynarken sunucudaki gerçek ilerlemeye dokunmaz.
+
 ---
 
 ## 6) Servis ve altyapı
@@ -358,13 +393,14 @@ sürece dokunulmaz. Ağ tarafı (DNS + Traefik) değiştiyse komşu servisleri d
 ## 7) Test ve doğrulama
 
 ```bash
-bun test               # 51 test / 7 dosya
+bun test               # 63 test / 8 dosya
 bun run lint           # biome check (CI'da aynı adım var)
 bunx tsc --noEmit      # tip kontrolü
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px üst çubuk
 python3 ~/.hermes/cache/scratch/okumo_sources_popup_check.py          # kaynak popup'ı + obsidian bağlantıları
 python3 ~/.hermes/cache/scratch/okumo_calendar_scroll_check.py        # tekrar takvimi en sağda (bugün) açılıyor mu
 python3 ~/.hermes/cache/scratch/okumo_new_items_check.py             # yeni kayıt popup'ı: sessiz ilk açılış, 4 yeni kelime
+python3 ~/.hermes/cache/scratch/okumo_lang_menu_check.py             # dil menüsü: TR/EN aç-kapa, kalıcılık, oyun+tablo uyumu, 375 px
 python3 ~/.hermes/cache/scratch/okumo_deck_popup_check.py            # "N kayıt" düğmesi → tüm deste popup'ı (335 = 111+9+215)
 bun run build          # derleme
 curl -s http://127.0.0.1:8911/health      # {"status":"ok","dist":true,"progress":…}

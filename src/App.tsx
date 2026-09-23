@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityHeat, XpChart } from "./components/History";
-import { BigButton, CozyCard, Pill, ProgressBar, TopBar } from "./components/ui";
+import { BigButton, CozyCard, LangMenu, Pill, ProgressBar, TopBar } from "./components/ui";
 import MatchGame, { type GameResult } from "./games/MatchGame";
 import SessionGame from "./games/SessionGame";
 import { connectives, meta, verbs, words } from "./lib/data";
+import { useT } from "./lib/i18n";
 import { isDue } from "./lib/srs";
 import {
   detectNewDeckItems,
@@ -29,25 +30,25 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
     id: "match",
     icon: "🃏",
     title: "Eşleştirme",
-    desc: "Solda Hollandaca + örnek cümle, sağda İngilizce + Türkçe. 5 çift.",
+    desc: "Solda Hollandaca + örnek cümle, sağda çevirisi. 5 çift.",
   },
   {
     id: "choice",
     icon: "✅",
     title: "Çoktan seçmeli",
-    desc: "NL→TR, NL→EN ve TR→NL yönlerinde 4 şıklı sorular.",
+    desc: "Hollandacadan çeviriye, çeviriden Hollandacaya 4 şıklı sorular.",
   },
   {
     id: "type",
     icon: "⌨️",
     title: "Yazma",
-    desc: "Türkçesi/İngilizcesi verilir, Hollandacasını yazarsın.",
+    desc: "Açık dillerdeki karşılığı verilir, Hollandacasını yazarsın.",
   },
   {
     id: "scramble",
     icon: "🧩",
     title: "Cümle dizme",
-    desc: "Türkçesi verilir, karışık kelimeleri doğru sıraya dizip Hollandaca cümleyi kurarsın.",
+    desc: "Çevirisi verilir, karışık kelimeleri doğru sıraya dizip Hollandaca cümleyi kurarsın.",
   },
   {
     id: "connect",
@@ -67,27 +68,28 @@ const MODES: { id: ModeId; icon: string; title: string; desc: string; tag?: stri
 /** Yeni kayıt popup'ında listelenen en fazla satır — fazlası "… ve N tane daha" olur. */
 const NEW_ITEMS_SHOWN = 20;
 
-function describe(id: string): { nl: string; tr: string } | null {
+function describe(id: string): { nl: string; tr: string; en: string } | null {
   if (id.startsWith("c:")) {
     const c = connectives.find((x) => x.id === id.slice(2));
-    return c ? { nl: c.nl, tr: `${c.functie} · ${c.tr}` } : null;
+    return c ? { nl: c.nl, tr: `${c.functie} · ${c.tr}`, en: c.en } : null;
   }
   if (id.startsWith("v:")) {
     const v = verbs.find((x) => x.id === id.slice(2).split(":")[0]);
-    return v ? { nl: `${v.inf} · ${v.vt} · ${v.vt_mv} · ${v.voltooid}`, tr: v.tr } : null;
+    return v ? { nl: `${v.inf} · ${v.vt} · ${v.vt_mv} · ${v.voltooid}`, tr: v.tr, en: v.en } : null;
   }
   const w = words.find((x) => x.id === id);
-  return w ? { nl: w.nl, tr: w.tr } : null;
+  return w ? { nl: w.nl, tr: w.tr, en: w.en } : null;
 }
 
-/** Kayıt satırı: `NL — TR` — yeni kayıt popup'ı ve deste listesi aynı biçimi kullanır. */
+/** Kayıt satırı: `NL — <açık dillerdeki çeviri>` — yeni kayıt popup'ı ve deste listesi aynı biçim. */
 function RecordRow({ id }: { id: string }) {
+  const { ceviri } = useT();
   const info = describe(id);
   if (!info) return null;
   return (
     <li>
       <span className="font-semibold">{info.nl}</span>{" "}
-      <span className="text-inksoft">— {info.tr}</span>
+      <span className="text-inksoft">— {ceviri(info)}</span>
     </li>
   );
 }
@@ -109,6 +111,7 @@ const DECK_GROUPS = [
 export default function App() {
   const progress = useProgress();
   const sync = useSyncState();
+  const { t, ceviri } = useT();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [newItems, setNewItems] = useState<string[]>([]);
   const [deckQuery, setDeckQuery] = useState("");
@@ -125,15 +128,15 @@ export default function App() {
   // fiili çözemiyor ve popup satırı boş kalıyordu.
   const allIds = useMemo(() => DECK_GROUPS.flatMap((g) => g.ids), []);
 
-  // Deste listesi araması: NL + TR metni üzerinde basit içerik araması (harf duyarsız).
-  // 335 kayıt için her tuşta yeniden süzmek ucuz; indeks gerekirse `describe` yerine Map'e geçilir.
+  // Deste listesi araması: NL + tüm çeviriler üzerinde basit içerik araması (harf duyarsız).
+  // Kapalı dilde de arama çalışır (İngilizce kapalı olsa "reach" yine bulur) — daha az sürpriz.
   const deckGroups = useMemo(() => {
     const q = deckQuery.trim().toLocaleLowerCase();
     if (!q) return DECK_GROUPS.map((g) => ({ ...g, ids: g.ids, hepsi: g.ids.length }));
     return DECK_GROUPS.map((g) => {
       const ids = g.ids.filter((id) => {
         const info = describe(id);
-        return info ? `${info.nl} ${info.tr}`.toLocaleLowerCase().includes(q) : false;
+        return info ? `${info.nl} ${info.tr} ${info.en}`.toLocaleLowerCase().includes(q) : false;
       });
       return { ...g, ids, hepsi: g.ids.length };
     });
@@ -181,20 +184,23 @@ export default function App() {
         onHome={screen.name === "home" ? undefined : () => setScreen({ name: "home" })}
         right={
           <>
-            <Pill title="Seri (üst üste oynanan gün)">🔥 {progress.streak}</Pill>
-            <Pill title="Toplam XP">⭐ {progress.xp}</Pill>
-            <Pill title={`Seviye ${level}`}>Sv {level}</Pill>
+            <Pill title={t("Seri (üst üste oynanan gün)")}>🔥 {progress.streak}</Pill>
+            <Pill title={t("Toplam XP")}>⭐ {progress.xp}</Pill>
+            <Pill title={t("Seviye {n} · {xp} XP", { n: level, xp: progress.xp })}>Sv {level}</Pill>
             <Pill
               title={
                 sync === "synced"
-                  ? "İlerleme yerel sunucuyla eşitlendi"
+                  ? t("İlerleme yerel sunucuyla eşitlendi")
                   : sync === "offline"
-                    ? "Sunucuya ulaşılamıyor — ilerleme bu cihazda birikiyor, bağlantı gelince eşitlenir"
-                    : "Eşitleme bekleniyor"
+                    ? t(
+                        "Sunucuya ulaşılamıyor — ilerleme bu cihazda birikiyor, bağlantı gelince eşitlenir",
+                      )
+                    : t("Eşitleme bekleniyor")
               }
             >
               {sync === "synced" ? "☁️" : sync === "offline" ? "📴" : "💾"}
             </Pill>
+            <LangMenu />
           </>
         }
       />
@@ -204,20 +210,29 @@ export default function App() {
           <section className="flex flex-col gap-6">
             <div>
               <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
-                Hollandaca alıştırma
+                {t("Hollandaca alıştırma")}
               </h1>
               <p className="mt-2 text-inksoft">
-                Sınıf notlarından üretilmiş {words.length} kelime/ifade, {connectives.length} bağlaç
-                ve {verbs.length} fiil. Bugün tekrar edilecek kart: <strong>{dueCount}</strong>
+                {t(
+                  "Sınıf notlarından üretilmiş {kelime} kelime/ifade, {baglac} bağlaç ve {fiil} fiil.",
+                  {
+                    kelime: words.length,
+                    baglac: connectives.length,
+                    fiil: verbs.length,
+                  },
+                )}{" "}
+                {t("Bugün tekrar edilecek kart:")} <strong>{dueCount}</strong>
               </p>
             </div>
 
             <CozyCard className="bg-indigosoft">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold">
-                  Seviye {level} · {progress.xp} XP
+                  {t("Seviye {n} · {xp} XP", { n: level, xp: progress.xp })}
                 </span>
-                <span className="text-inksoft">{progress.sessions} tur oynandı</span>
+                <span className="text-inksoft">
+                  {t("{n} tur oynandı", { n: progress.sessions })}
+                </span>
               </div>
               <div className="mt-2">
                 <ProgressBar value={Math.round(levelProgress(progress.xp) * 100)} max={100} />
@@ -239,14 +254,14 @@ export default function App() {
                     <span className="text-2xl" aria-hidden="true">
                       {mode.icon}
                     </span>
-                    <span className="font-display text-lg font-semibold">{mode.title}</span>
+                    <span className="font-display text-lg font-semibold">{t(mode.title)}</span>
                     {mode.tag ? (
                       <span className="ml-auto rounded-full bg-accentsoft px-2 py-0.5 text-xs font-semibold text-accent">
-                        {mode.tag}
+                        {t(mode.tag)}
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-inksoft">{mode.desc}</p>
+                  <p className="text-sm text-inksoft">{t(mode.desc)}</p>
                 </CozyCard>
               ))}
             </div>
@@ -257,30 +272,30 @@ export default function App() {
                 onClick={() => sourcesDialog.current?.showModal()}
                 className="underline"
               >
-                📄 Veri kaynakları ({meta.sources.length})
+                {t("📄 Veri kaynakları ({n})", { n: meta.sources.length })}
               </button>
               <button type="button" onClick={downloadProgress} className="underline">
-                İlerlemeyi indir
+                {t("İlerlemeyi indir")}
               </button>
               <button
                 type="button"
                 onClick={() => fileInput.current?.click()}
                 className="underline"
               >
-                İçe aktar
+                {t("İçe aktar")}
               </button>
               <button
                 type="button"
                 onClick={() => {
                   if (
-                    confirm("Tüm ilerleme (XP, seri, tekrar kartları) sıfırlanacak. Emin misin?")
+                    confirm(t("Tüm ilerleme (XP, seri, tekrar kartları) sıfırlanacak. Emin misin?"))
                   ) {
                     resetProgress();
                   }
                 }}
                 className="underline"
               >
-                Sıfırla
+                {t("Sıfırla")}
               </button>
               <input
                 ref={fileInput}
@@ -293,7 +308,7 @@ export default function App() {
                   try {
                     replaceProgress(JSON.parse(await file.text()));
                   } catch {
-                    alert("Dosya okunamadı.");
+                    alert(t("Dosya okunamadı."));
                   }
                   e.target.value = "";
                 }}
@@ -304,7 +319,7 @@ export default function App() {
                 onClick={() => deckDialog.current?.showModal()}
                 className="ml-auto underline"
               >
-                {total} kayıt
+                {t("{n} kayıt", { n: total })}
               </button>
             </div>
 
@@ -315,10 +330,12 @@ export default function App() {
               ref={sourcesDialog}
               className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
             >
-              <h2 className="font-display text-lg font-semibold">Veri kaynakları</h2>
+              <h2 className="font-display text-lg font-semibold">{t("Veri kaynakları")}</h2>
               <p className="mt-1 text-xs text-inksoft">
-                Uygulamadaki {total} kayıt bu ders notlarından üretilir. Bağlantılar notu
-                Obsidian'da açar (kasa: emre).
+                {t(
+                  "Uygulamadaki {n} kayıt bu ders notlarından üretilir. Bağlantılar notu Obsidian'da açar (kasa: emre).",
+                  { n: total },
+                )}
               </p>
               <ul className="mt-3 flex flex-col gap-2 text-sm">
                 {meta.sources.map((s) => (
@@ -326,12 +343,12 @@ export default function App() {
                     <a href={s.obsidian} className="underline">
                       {s.file.replace(" Hollandaca dil kursu.md", "")}
                     </a>
-                    <span className="text-inksoft">· {s.items} kayıt</span>
+                    <span className="text-inksoft">{t("· {n} kayıt", { n: s.items })}</span>
                   </li>
                 ))}
               </ul>
               <div className="mt-4 flex justify-end">
-                <BigButton onClick={() => sourcesDialog.current?.close()}>Kapat</BigButton>
+                <BigButton onClick={() => sourcesDialog.current?.close()}>{t("Kapat")}</BigButton>
               </div>
             </dialog>
 
@@ -343,10 +360,10 @@ export default function App() {
               className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
             >
               <h2 className="font-display text-lg font-semibold">
-                🆕 {newItems.length} yeni kayıt geldi
+                {t("🆕 {n} yeni kayıt geldi", { n: newItems.length })}
               </h2>
               <p className="mt-1 text-xs text-inksoft">
-                Son açılıştan bu yana desteye eklenenler (yeni ders notları):
+                {t("Son açılıştan bu yana desteye eklenenler (yeni ders notları):")}
               </p>
               <ul className="mt-3 flex max-h-[45vh] flex-col gap-1 overflow-y-auto text-sm">
                 {newItems.slice(0, NEW_ITEMS_SHOWN).map((id) => (
@@ -355,11 +372,11 @@ export default function App() {
               </ul>
               {newItems.length > NEW_ITEMS_SHOWN ? (
                 <p className="mt-2 text-xs text-inksoft">
-                  … ve {newItems.length - NEW_ITEMS_SHOWN} tane daha
+                  {t("… ve {n} tane daha", { n: newItems.length - NEW_ITEMS_SHOWN })}
                 </p>
               ) : null}
               <div className="mt-4 flex justify-end">
-                <BigButton onClick={() => newItemsDialog.current?.close()}>Tamam</BigButton>
+                <BigButton onClick={() => newItemsDialog.current?.close()}>{t("Tamam")}</BigButton>
               </div>
             </dialog>
 
@@ -371,18 +388,20 @@ export default function App() {
               onClose={() => setDeckQuery("")}
               className="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-cozy bg-surface p-4 text-ink shadow-cozy backdrop:bg-sand/60 backdrop:backdrop-blur-sm"
             >
-              <h2 className="font-display text-lg font-semibold">📚 {total} kayıt</h2>
+              <h2 className="font-display text-lg font-semibold">
+                {t("📚 {n} kayıt", { n: total })}
+              </h2>
               <p className="mt-1 text-xs text-inksoft">
-                Ders notlarından üretilen destenin tamamı. Kelimeler alfabetik, fiiller çekim dizisi
-                (inf · vt · vt_mv · voltooid) ile listelenir; arama hem Hollandaca hem Türkçe
-                metinde çalışır.
+                {t(
+                  "Ders notlarından üretilen destenin tamamı. Kelimeler alfabetik, fiiller çekim dizisi (inf · vt · vt_mv · voltooid) ile listelenir; arama çevirilerde de çalışır.",
+                )}
               </p>
               <input
                 type="search"
                 data-testid="deck-search"
                 value={deckQuery}
                 onChange={(e) => setDeckQuery(e.target.value)}
-                placeholder="Ara: Hollandaca ya da Türkçe (örn. twijfel, şüphe)"
+                placeholder={t("Ara: Hollandaca ya da çeviri (örn. twijfel, şüphe)")}
                 className="mt-3 w-full rounded-cozy border border-surface2 bg-sand px-3 py-2 text-sm"
               />
               <ul className="mt-3 flex max-h-[55vh] flex-col gap-3 overflow-y-auto text-sm">
@@ -391,7 +410,7 @@ export default function App() {
                   .map((g) => (
                     <li key={g.ad} data-testid={`deck-group-${g.ad.toLowerCase()}`}>
                       <h3 className="sticky top-0 bg-surface text-xs font-semibold text-inksoft">
-                        {g.icon} {g.ad} · {g.ids.length}
+                        {g.icon} {t(g.ad)} · {g.ids.length}
                         {g.ids.length !== g.hepsi ? ` / ${g.hepsi}` : ""}
                       </h3>
                       <ul className="mt-1 flex flex-col gap-1">
@@ -404,11 +423,11 @@ export default function App() {
               </ul>
               {deckHits === 0 ? (
                 <p className="mt-2 text-xs text-inksoft" data-testid="deck-empty">
-                  Aramayla eşleşen kayıt yok.
+                  {t("Aramayla eşleşen kayıt yok.")}
                 </p>
               ) : null}
               <div className="mt-4 flex justify-end">
-                <BigButton onClick={() => deckDialog.current?.close()}>Kapat</BigButton>
+                <BigButton onClick={() => deckDialog.current?.close()}>{t("Kapat")}</BigButton>
               </div>
             </dialog>
           </section>
@@ -425,40 +444,48 @@ export default function App() {
         {screen.name === "summary" ? (
           <section className="flex flex-col gap-4" data-testid="summary">
             <h1 className="font-display text-3xl font-semibold">
-              {screen.result.correct}/{screen.result.total} doğru
+              {t("{a}/{b} doğru", { a: screen.result.correct, b: screen.result.total })}
             </h1>
             <p className="text-inksoft">
-              +{screen.result.xp} XP · 🔥 {progress.streak} gün seri · toplam {progress.xp} XP
+              {t("+{xp} XP · 🔥 {seri} gün seri · toplam {toplam} XP", {
+                xp: screen.result.xp,
+                seri: progress.streak,
+                toplam: progress.xp,
+              })}
             </p>
 
             {screen.result.wrongIds.length ? (
               <CozyCard>
-                <div className="font-display text-lg font-semibold">Bu turda zorlandıkların</div>
+                <div className="font-display text-lg font-semibold">
+                  {t("Bu turda zorlandıkların")}
+                </div>
                 <ul className="mt-2 flex flex-col gap-1 text-sm">
                   {screen.result.wrongIds.map((id) => {
                     const info = describe(id);
                     return info ? (
                       <li key={id}>
                         <span className="font-semibold">{info.nl}</span>{" "}
-                        <span className="text-inksoft">— {info.tr}</span>
+                        <span className="text-inksoft">— {ceviri(info)}</span>
                       </li>
                     ) : null;
                   })}
                 </ul>
                 <p className="mt-3 text-sm text-inksoft">
-                  Bu kartlar tekrar sırasında öne alındı; bir sonraki turda yeniden karşına çıkacak.
+                  {t(
+                    "Bu kartlar tekrar sırasında öne alındı; bir sonraki turda yeniden karşına çıkacak.",
+                  )}
                 </p>
               </CozyCard>
             ) : (
               <CozyCard className="bg-good/10">
-                <p className="font-semibold">Hepsi doğru — tebrikler! 🎉</p>
+                <p className="font-semibold">{t("Hepsi doğru — tebrikler! 🎉")}</p>
               </CozyCard>
             )}
 
             <div className="flex flex-wrap gap-3">
-              <BigButton onClick={() => startGame(screen.mode)}>Yeni tur</BigButton>
+              <BigButton onClick={() => startGame(screen.mode)}>{t("Yeni tur")}</BigButton>
               <BigButton variant="soft" onClick={() => setScreen({ name: "home" })}>
-                Ana sayfa
+                {t("Ana sayfa")}
               </BigButton>
             </div>
           </section>

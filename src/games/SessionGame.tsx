@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { BigButton, ProgressBar } from "../components/ui";
 import { feedbackSound, haptic, shake } from "../lib/feedback";
+import { getLangs, useT } from "../lib/i18n";
 import { checkAnswer } from "../lib/srs";
 import { getProgress } from "../lib/store";
 import type { Grade } from "../lib/types";
@@ -16,9 +17,13 @@ export default function SessionGame({
   mode: "choice" | "type" | "scramble" | "connect" | "verbs";
   onFinish: (r: GameResult) => void;
 }) {
+  const { t, langs } = useT();
+  // Tur başında açık diller sabitlenir: tur ortasında dil değişse sorular yerinden oynamasın
+  // (metinler ve bilgi satırları anında yeni dile geçer, soru akışı tur bitene kadar sabit kalır).
+  const [turDilleri] = useState(getLangs);
   const questions = useMemo<Question[]>(
-    () => buildQuestions(mode, SIZE, getProgress().cards),
-    [mode],
+    () => buildQuestions(mode, SIZE, getProgress().cards, turDilleri),
+    [mode, turDilleri],
   );
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
@@ -132,7 +137,7 @@ export default function SessionGame({
                   data-testid="scramble-built"
                   className="rounded-cozy min-h-[3.25rem] bg-surface px-4 py-3 text-lg shadow-cozy"
                 >
-                  {built || <span className="text-inksoft">Kelimelere sırayla dokun…</span>}
+                  {built || <span className="text-inksoft">{t("Kelimelere sırayla dokun…")}</span>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {chips.map((word, i) => {
@@ -159,7 +164,7 @@ export default function SessionGame({
                 {state === "asking" ? (
                   <div className="flex items-center gap-3">
                     <BigButton onClick={() => settle(checkAnswer(built, [q.answer]))}>
-                      Kontrol et
+                      {t("Kontrol et")}
                     </BigButton>
                     {order.length ? (
                       <button
@@ -167,7 +172,7 @@ export default function SessionGame({
                         onClick={() => setOrder((o) => o.slice(0, -1))}
                         className="text-sm text-inksoft underline"
                       >
-                        Geri al
+                        {t("Geri al")}
                       </button>
                     ) : null}
                   </div>
@@ -190,11 +195,13 @@ export default function SessionGame({
               value={input}
               data-testid="typed-answer"
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Hollandacasını yaz…"
+              placeholder={t("Hollandacasını yaz…")}
               disabled={state !== "asking"}
               className="rounded-cozy bg-surface px-4 py-3 text-lg shadow-cozy outline-none ring-accent focus:ring-2 disabled:opacity-70"
             />
-            {state === "asking" ? <BigButton onClick={submitTyped}>Kontrol et</BigButton> : null}
+            {state === "asking" ? (
+              <BigButton onClick={submitTyped}>{t("Kontrol et")}</BigButton>
+            ) : null}
           </form>
         )}
       </div>
@@ -207,33 +214,39 @@ export default function SessionGame({
           data-testid="feedback"
         >
           <div className="font-display text-lg font-semibold">
-            {state === "right" ? "Doğru!" : `Yanlış — doğrusu: ${q.answer}`}
+            {state === "right" ? t("Doğru!") : t("Yanlış — doğrusu: {cevap}", { cevap: q.answer })}
           </div>
+          {/* Bilgi satırları açık dillere göre: NL her zaman (öğrenilen dil), EN/TR açıksa. */}
           <dl className="mt-2 grid grid-cols-1 gap-1 text-sm text-inksoft sm:grid-cols-2">
             <div>
               <dt className="inline font-semibold">NL: </dt>
               <dd className="inline">{q.detail.nl}</dd>
             </div>
-            <div>
-              <dt className="inline font-semibold">EN: </dt>
-              <dd className="inline">{q.detail.en}</dd>
-            </div>
-            <div>
-              <dt className="inline font-semibold">TR: </dt>
-              <dd className="inline">{q.detail.tr}</dd>
-            </div>
+            {langs.includes("en") ? (
+              <div>
+                <dt className="inline font-semibold">EN: </dt>
+                <dd className="inline">{q.detail.en}</dd>
+              </div>
+            ) : null}
+            {langs.includes("tr") ? (
+              <div>
+                <dt className="inline font-semibold">TR: </dt>
+                <dd className="inline">{q.detail.tr}</dd>
+              </div>
+            ) : null}
             {q.detail.zin ? (
               <div className="sm:col-span-2">
-                <dt className="inline font-semibold">Örnek: </dt>
+                <dt className="inline font-semibold">{t("Örnek: ")}</dt>
                 <dd className="inline italic">
                   {q.detail.zin}
-                  {q.detail.zin_tr ? ` — ${q.detail.zin_tr}` : ""}
+                  {/* Cümle çevirisi veride yalnız Türkçe (`zin_tr`): TR kapalıysa gösterilmez. */}
+                  {langs.includes("tr") && q.detail.zin_tr ? ` — ${q.detail.zin_tr}` : ""}
                 </dd>
               </div>
             ) : null}
           </dl>
           <div className="mt-3">
-            <BigButton onClick={next}>{isLast ? "Turu bitir" : "Devam"}</BigButton>
+            <BigButton onClick={next}>{isLast ? t("Turu bitir") : t("Devam")}</BigButton>
           </div>
         </div>
       ) : null}

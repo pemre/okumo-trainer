@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ProgressBar, XpBurst } from "../components/ui";
 import { words } from "../lib/data";
+import { useT } from "../lib/i18n";
 import { pickSession, shuffle } from "../lib/srs";
 import { getProgress } from "../lib/store";
 import type { Grade, WordItem } from "../lib/types";
@@ -16,6 +17,7 @@ export interface GameResult {
 const PAIRS = 5;
 
 export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => void }) {
+  const { t, langs } = useT();
   const left = useMemo<WordItem[]>(() => pickSession(words, getProgress().cards, PAIRS), []);
   const rightOrder = useMemo(() => shuffle(left.map((w) => w.id)), [left]);
 
@@ -62,11 +64,11 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
       <div className="mb-4 flex items-center gap-3">
         <ProgressBar value={solved.length} max={left.length} />
         <span className="shrink-0 text-sm text-inksoft">
-          {solved.length}/{left.length} eşleşti
+          {t("{a}/{b} eşleşti", { a: solved.length, b: left.length })}
         </span>
       </div>
       <p className="mb-4 text-sm text-inksoft">
-        Soldaki Hollandaca kelimeyi, sağdaki İngilizce/Türkçe karşılığıyla eşleştir.
+        {t("Soldaki Hollandaca kelimeyi, sağdaki çevirisiyle eşleştir.")}
       </p>
 
       <div className="grid grid-cols-2 gap-3" data-testid="match-board">
@@ -99,30 +101,36 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
         </div>
 
         <div className="flex flex-col gap-3">
-          {right.map((w) => (
-            <button
-              key={w.id}
-              type="button"
-              data-testid={`tile-tr-${w.id}`}
-              disabled={locked(w.id)}
-              onClick={() => tapRight(w.id)}
-              className={`rounded-cozy border p-3 text-left shadow-cozy transition-all ${
-                locked(w.id)
-                  ? "border-good/40 bg-good/10 opacity-60"
-                  : shake.includes(w.id)
-                    ? "animate-shake border-danger bg-accentsoft"
-                    : "border-transparent bg-surface hover:brightness-[1.02]"
-              }`}
-            >
-              <div className="font-display text-base font-semibold sm:text-lg">{w.en}</div>
-              <div className="mt-1 text-xs text-inksoft">{w.tr}</div>
-            </button>
-          ))}
+          {right.map((w) => {
+            // Tasarım dili: İngilizce kalın, Türkçe ince. Açık dillere göre süzülür:
+            // EN kapalıysa Türkçe kalın olur, tek satır kalır.
+            const ana = langs.includes("en") ? w.en : w.tr;
+            const alt = langs.includes("tr") && langs.includes("en") ? w.tr : "";
+            return (
+              <button
+                key={w.id}
+                type="button"
+                data-testid={`tile-tr-${w.id}`}
+                disabled={locked(w.id)}
+                onClick={() => tapRight(w.id)}
+                className={`rounded-cozy border p-3 text-left shadow-cozy transition-all ${
+                  locked(w.id)
+                    ? "border-good/40 bg-good/10 opacity-60"
+                    : shake.includes(w.id)
+                      ? "animate-shake border-danger bg-accentsoft"
+                      : "border-transparent bg-surface hover:brightness-[1.02]"
+                }`}
+              >
+                <div className="font-display text-base font-semibold sm:text-lg">{ana}</div>
+                {alt ? <div className="mt-1 text-xs text-inksoft">{alt}</div> : null}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm text-inksoft">
-        <span>Yanlış deneme: {errors}</span>
+        <span>{t("Yanlış deneme: {n}", { n: errors })}</span>
         <span className="relative">
           <XpBurst amount={burst} />
         </span>

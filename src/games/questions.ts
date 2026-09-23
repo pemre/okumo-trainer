@@ -1,4 +1,5 @@
 import { connectives, verbs, words } from "../lib/data";
+import { aileAdi, type Lang, translate } from "../lib/i18n";
 import { buildOptions, pickSession, shuffle } from "../lib/srs";
 import type { CardState, Connective, ModeId, Verb, WordItem } from "../lib/types";
 
@@ -37,11 +38,26 @@ const wordDetail = (w: WordItem) => ({
   zin_tr: w.zin_tr,
 });
 
-function choiceQuestion(item: WordItem, direction: "nl-tr" | "nl-en" | "tr-nl"): Question {
-  const key = direction === "tr-nl" ? "nl" : direction === "nl-en" ? "en" : "tr";
+/** Soru yönleri açık dillere göre: tek dil → o dille çift yönlü, iki dil → üç yön (bugünkü karışım). */
+type ChoiceDir = "nl-tr" | "nl-en" | "tr-nl" | "en-nl";
+
+function choiceDirs(ls: Lang[]): ChoiceDir[] {
+  if (ls.includes("tr") && ls.includes("en")) return ["nl-tr", "nl-en", "tr-nl"];
+  return ls.includes("tr") ? ["nl-tr", "tr-nl"] : ["nl-en", "en-nl"];
+}
+
+function typeDirs(ls: Lang[]): ("tr-nl" | "en-nl")[] {
+  if (ls.includes("tr") && ls.includes("en")) return ["tr-nl", "en-nl"];
+  return ls.includes("tr") ? ["tr-nl"] : ["en-nl"];
+}
+
+function choiceQuestion(item: WordItem, direction: ChoiceDir, ls: Lang[]): Question {
+  const key =
+    direction === "tr-nl" || direction === "en-nl" ? "nl" : direction === "nl-en" ? "en" : "tr";
   const options = buildOptions(item, words, (w) => w[key], Math.random, 4).map((w) => w[key]);
-  const prompt = direction === "tr-nl" ? item.tr : item.nl;
-  const promptSub = direction === "tr-nl" ? item.en : item.zin;
+  const prompt = direction === "tr-nl" ? item.tr : direction === "en-nl" ? item.en : item.nl;
+  // Çeviriden Hollandacaya sorularda alt satır: öteki açık dilin anlamı, yoksa Hollandaca örnek cümle.
+  const promptSub = direction === "tr-nl" && ls.includes("en") ? item.en : item.zin;
   return {
     id: item.id,
     kind: "choice",
@@ -53,22 +69,24 @@ function choiceQuestion(item: WordItem, direction: "nl-tr" | "nl-en" | "tr-nl"):
   };
 }
 
-function typeQuestion(item: WordItem, direction: "tr-nl" | "en-nl"): Question {
+function typeQuestion(item: WordItem, direction: "tr-nl" | "en-nl", ls: Lang[]): Question {
   return {
     id: item.id,
     kind: "type",
     prompt: direction === "tr-nl" ? item.tr : item.en,
-    promptSub:
+    promptSub: translate(
+      ls,
       direction === "tr-nl"
         ? "(Türkçesi) — Hollandacasını yaz"
         : "(İngilizcesi) — Hollandacasını yaz",
+    ),
     answer: item.nl,
     alternatives: item.synoniem ? [item.synoniem] : undefined,
     detail: wordDetail(item),
   };
 }
 
-function connectiveQuestion(connective: Connective, kind: "choice" | "type"): Question {
+function connectiveQuestion(connective: Connective, kind: "choice" | "type", ls: Lang[]): Question {
   const blanked = blankSentence(connective.zin, connective.nl);
   const distractors = shuffle(
     connectives.filter((c) => c.id !== connective.id).map((c) => c.nl),
@@ -78,8 +96,11 @@ function connectiveQuestion(connective: Connective, kind: "choice" | "type"): Qu
     id: `c:${connective.id}`,
     kind,
     prompt: blanked,
-    promptSub: `İşlev: ${connective.functie}`,
-    hint: "Boşluğa uygun bağlacı getir",
+    // `functie` veride yalnız Türkçe: TR kapalıysa bu ipucu gösterilmez (uydurma çeviri yok).
+    promptSub: ls.includes("tr")
+      ? translate(ls, "İşlev: {f}", { f: connective.functie })
+      : undefined,
+    hint: translate(ls, "Boşluğa uygun bağlacı getir"),
     answer: connective.nl,
     options,
     detail: {
@@ -95,7 +116,7 @@ function connectiveQuestion(connective: Connective, kind: "choice" | "type"): Qu
 const VERB_FORMS = ["vt", "vt_mv", "voltooid"] as const;
 type VerbForm = (typeof VERB_FORMS)[number];
 
-function verbQuestion(verb: Verb, form: VerbForm): Question {
+function verbQuestion(verb: Verb, form: VerbForm, ls: Lang[]): Question {
   const labels: Record<VerbForm, string> = {
     vt: "verleden tijd (enkelvoud)",
     vt_mv: "verleden tijd (meervoud)",
@@ -107,7 +128,8 @@ function verbQuestion(verb: Verb, form: VerbForm): Question {
     kind: "type",
     prompt: verb.inf,
     promptSub: labels[form],
-    hint: verb.familie_adi,
+    // Aile adı veride yalnız Türkçe; EN için ses kalıbı kodu (15 aile) çevrilir.
+    hint: aileAdi(ls, verb),
     answer,
     alternatives:
       form === "voltooid" ? [answer.replace(/^(hebben|heeft|is|zijn)\s+/, "")] : undefined,
@@ -115,18 +137,19 @@ function verbQuestion(verb: Verb, form: VerbForm): Question {
       nl: `${verb.inf} · ${verb.vt} · ${verb.vt_mv} · ${verb.voltooid}`,
       en: verb.en,
       tr: verb.tr,
-      zin: verb.familie_adi,
+      zin: aileAdi(ls, verb),
     },
   };
 }
 
-function scrambleQuestion(item: WordItem): Question {
+function scrambleQuestion(item: WordItem, ls: Lang[]): Question {
   const words = item.zin.split(/\s+/);
   return {
     id: item.id,
     kind: "scramble",
-    prompt: item.zin_tr || item.tr,
-    promptSub: "Kelimeleri doğru sıraya koy",
+    // Cümle çevirisi veride yalnız Türkçe (`zin_tr`): TR kapalıysa kelime anlamı gösterilir.
+    prompt: ls.includes("tr") ? item.zin_tr || item.tr : item.en || item.tr,
+    promptSub: translate(ls, "Kelimeleri doğru sıraya koy"),
     hint: item.nl,
     answer: item.zin,
     words: shuffle(words),
@@ -140,10 +163,11 @@ export function buildQuestions(
   mode: ModeId,
   size: number,
   cards: Record<string, CardState>,
+  ls: Lang[],
 ): Question[] {
   if (mode === "connect") {
     const picked = pickSession(connectives, cards, size, new Date(), Math.random);
-    return picked.map((c, i) => connectiveQuestion(c, i % 2 === 0 ? "choice" : "type"));
+    return picked.map((c, i) => connectiveQuestion(c, i % 2 === 0 ? "choice" : "type", ls));
   }
   if (mode === "verbs") {
     const picked = pickSession(
@@ -153,16 +177,15 @@ export function buildQuestions(
       new Date(),
       Math.random,
     );
-    return picked.map((p, i) => verbQuestion(p.verb, VERB_FORMS[i % VERB_FORMS.length]));
+    return picked.map((p, i) => verbQuestion(p.verb, VERB_FORMS[i % VERB_FORMS.length], ls));
   }
   const pool = mode === "scramble" ? words.filter(usableForScramble) : words;
   const picked = pickSession(pool, cards, size, new Date(), Math.random);
+  const cDirs = choiceDirs(ls);
+  const tDirs = typeDirs(ls);
   return picked.map((w, i) => {
-    if (mode === "scramble") return scrambleQuestion(w);
-    if (mode === "choice") {
-      const dirs = ["nl-tr", "nl-en", "tr-nl"] as const;
-      return choiceQuestion(w, dirs[i % dirs.length]);
-    }
-    return typeQuestion(w, i % 2 === 0 ? "tr-nl" : "en-nl");
+    if (mode === "scramble") return scrambleQuestion(w, ls);
+    if (mode === "choice") return choiceQuestion(w, cDirs[i % cDirs.length], ls);
+    return typeQuestion(w, tDirs[i % tDirs.length], ls);
   });
 }

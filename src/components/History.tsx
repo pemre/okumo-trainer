@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_DAYS, calendarRows, dailySeries, movingAverage } from "../lib/history";
+import { useT } from "../lib/i18n";
 
 // okumo.dev paleti: krem zemin, terracotta aksan. Seviye 0 boş gün.
 const LEVEL_FILL = ["#e7dcc4", "#e6b795", "#d98a5f", "#c14a1d", "#8f3113"];
@@ -23,9 +24,14 @@ const INK = "#8a7a63";
 // aradaki seviyeleri kütüphane açar. Okumo krem zemin kullandığı için iki şemada da açık renk.
 const CALENDAR_THEME = { light: ["#eee3cb", "#c14a1d"], dark: ["#eee3cb", "#c14a1d"] };
 
-const MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+// Ay etiketleri dar alan (3 harf): iki dilli yazılamaz → açık dillerin ilki kullanılır.
+const MONTHS: Record<string, string[]> = {
+  tr: ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+};
 
 export function XpChart({ daily }: { daily: Record<string, number> }) {
+  const { t } = useT();
   const series = dailySeries(daily, CHART_DAYS);
   const average = movingAverage(series.map((day) => day.xp));
   const data = series.map((day, i) => ({
@@ -38,8 +44,12 @@ export function XpChart({ daily }: { daily: Record<string, number> }) {
   return (
     <section className="rounded-cozy bg-surface p-4 shadow-cozy" data-testid="xp-chart">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-display text-lg font-semibold">Son {CHART_DAYS} gün</h2>
-        <span className="text-xs text-inksoft">{empty ? "henüz kayıt yok" : "günlük XP"}</span>
+        <h2 className="font-display text-lg font-semibold">
+          {t("Son {n} gün", { n: CHART_DAYS })}
+        </h2>
+        <span className="text-xs text-inksoft">
+          {empty ? t("henüz kayıt yok") : t("günlük XP")}
+        </span>
       </div>
       <div className="mt-3 h-32 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -66,7 +76,7 @@ export function XpChart({ daily }: { daily: Record<string, number> }) {
             <Line
               type="monotone"
               dataKey="avg"
-              name="7 günlük ortalama"
+              name={t("7 günlük ortalama")}
               stroke={INK}
               strokeWidth={2}
               dot={false}
@@ -79,12 +89,15 @@ export function XpChart({ daily }: { daily: Record<string, number> }) {
 }
 
 export function ActivityHeat({ daily }: { daily: Record<string, number> }) {
+  const { t, langs } = useT();
   const data = calendarRows(daily);
 
   return (
     <section className="rounded-cozy bg-surface p-4 shadow-cozy" data-testid="heatmap">
-      <h2 className="font-display text-lg font-semibold">Tekrar takvimi</h2>
-      <p className="mt-1 text-xs text-inksoft">Her kare bir gün; koyulaştıkça o gün daha çok XP.</p>
+      <h2 className="font-display text-lg font-semibold">{t("Tekrar takvimi")}</h2>
+      <p className="mt-1 text-xs text-inksoft">
+        {t("Her kare bir gün; koyulaştıkça o gün daha çok XP.")}
+      </p>
       <div className="mt-3 overflow-x-auto">
         {/* Kütüphane kaydırmayı kendi iç kapsayıcısında yapar
             (`.react-activity-calendar__scroll-container`), dışarıdaki sarmalayıcı taşmaz.
@@ -103,7 +116,7 @@ export function ActivityHeat({ daily }: { daily: Record<string, number> }) {
           blockMargin={3}
           weekStart={1}
           colorScheme="light"
-          labels={{ months: MONTHS }}
+          labels={{ months: MONTHS[langs[0]] ?? MONTHS.tr }}
           theme={CALENDAR_THEME}
           showTotalCount={false}
           showWeekdayLabels={false}
