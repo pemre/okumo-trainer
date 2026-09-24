@@ -176,12 +176,16 @@ Finishing a round plays a closing fanfare and shakes the whole page (`[data-feed
 | Correct | `success` (880 → 1320 Hz) | soft (6 frames / 260 ms, question card) |
 | Wrong | `error` (400 → 300 Hz) | hard (8 frames / 480 ms, question card) |
 | Matching game: pair found | `success` | — |
-| Matching game: wrong pair | `error` | `animate-shake` on both tiles (CSS, 350 ms) |
+| Matching game: wrong pair | `error` | `animate-shake` on the two picked tiles (one per column, CSS, 350 ms) |
 | Round end (every mode) | `finish` (523/659/784/1047 Hz arpeggio) | hard (whole page) |
 
 - **The answer area is left out of the click tone** (`[data-testid='answers']`, plus the speaker
   button): there the same press already plays its verdict tone on the spot, and a click underneath
   smears it. The matching tiles keep the click — tapping a Dutch card is a pick, not yet a verdict.
+- **The matching board keys its shake per column** (`{ nl, tr }` in `MatchGame.tsx`): both columns name
+  their cards by the same word id, so one shared id list marked up to four cards — the picked card's own
+  translation lit up red, which handed the answer over. A wrong pick now blinks exactly two cards, the
+  picked Dutch one and the tapped translation one.
 - No audio files: tones are synthesised with Web Audio → **works offline**, nothing added to the bundle.
 - `src/lib/feedback.ts` has no dependencies; without Web Audio / vibration / animation APIs it does
   nothing and never throws (iOS Safari ignores vibration; sound and shake still work).
@@ -196,7 +200,8 @@ Finishing a round plays a closing fanfare and shakes the whole page (`[data-feed
   sibling repo; if the library is published to npm this file turns back into an import.
 - Verification: `scripts/feedback.test.ts` (unit: frame counts, cancellation, silent fallback, tone
   frequency) + `okumo_feedback_check.py` (browser: menus and cards click, matching game plays its
-  tones and the fanfare, answer presses stay free of the click tone, reduced motion keeps the sound).
+  tones and the fanfare **and lights exactly two cards on a wrong pair**, answer presses stay free of
+  the click tone, reduced motion keeps the sound).
 - If the sound ever gets annoying, one condition in front of the `feedbackSound` calls turns it off;
   a permanent 🔊/🔇 button would go here **and** into `ay-ui-library`'s `PressFeedback` block.
 

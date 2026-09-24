@@ -24,7 +24,13 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
 
   const [selected, setSelected] = useState<string | null>(null);
   const [solved, setSolved] = useState<string[]>([]);
-  const [shake, setShake] = useState<string[]>([]);
+  // Both columns share the card ids, so the shake is keyed per side: a wrong pick blinks the picked
+  // Dutch card and the tapped translation card, nothing else (a shared id list lit up the counterpart
+  // of the picked card too, which gave the answer away).
+  const [shake, setShake] = useState<{ nl: string | null; tr: string | null }>({
+    nl: null,
+    tr: null,
+  });
   const [errors, setErrors] = useState(0);
   const attempted = useRef<Record<string, boolean>>({});
   const [burst, setBurst] = useState(0);
@@ -52,10 +58,10 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
     } else {
       attempted.current[selected] = true;
       setErrors((e) => e + 1);
-      setShake([selected, id]);
+      setShake({ nl: selected, tr: id });
       feedbackSound("error");
       haptic();
-      setTimeout(() => setShake([]), 350);
+      setTimeout(() => setShake({ nl: null, tr: null }), 350);
     }
   }
 
@@ -90,10 +96,10 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
               className={`rounded-cozy flex items-start gap-1 border p-3 shadow-cozy transition-all ${
                 locked(w.id)
                   ? "border-good/40 bg-good/10 opacity-60"
-                  : selected === w.id
-                    ? "border-accent bg-accentsoft"
-                    : shake.includes(w.id)
-                      ? "animate-shake border-danger bg-accentsoft"
+                  : shake.nl === w.id
+                    ? "animate-shake border-danger bg-accentsoft"
+                    : selected === w.id
+                      ? "border-accent bg-accentsoft"
                       : "border-transparent bg-surface hover:brightness-[1.02]"
               }`}
             >
@@ -131,7 +137,7 @@ export default function MatchGame({ onFinish }: { onFinish: (r: GameResult) => v
                 className={`rounded-cozy border p-3 text-left shadow-cozy transition-all ${
                   locked(w.id)
                     ? "border-good/40 bg-good/10 opacity-60"
-                    : shake.includes(w.id)
+                    : shake.tr === w.id
                       ? "animate-shake border-danger bg-accentsoft"
                       : "border-transparent bg-surface hover:brightness-[1.02]"
                 }`}
