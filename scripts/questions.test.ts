@@ -91,6 +91,19 @@ describe("question generation", () => {
       expect(q.answer.split(/\s+/).length).toBeLessThanOrEqual(3);
     }
   });
+
+  // The form label is interface text: it used to stay Turkish in the EN interface, and the family
+  // explanation used to print both languages (`TR · EN`) even in the conjugation drill.
+  test("verb drilling: the form label follows the interface language", () => {
+    const tr = buildQuestions("verbs", SIZE, {}, TR);
+    const en = buildQuestions("verbs", SIZE, {}, EN);
+    expect(tr.every((q) => /^(verleden tijd|voltooid deelwoord)/.test(q.promptSub ?? ""))).toBe(
+      true,
+    );
+    expect(en.every((q) => /^(past tense|past participle)/.test(q.promptSub ?? ""))).toBe(true);
+    expect(tr.every((q) => (q.hint ?? "").includes(" · ") === false)).toBe(true);
+    expect(en.every((q) => (q.hint ?? "").includes("tipi") === false)).toBe(true);
+  });
 });
 
 // A disabled interface language must never appear in questions or hints (core of the 3-language contract).

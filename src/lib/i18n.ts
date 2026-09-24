@@ -53,6 +53,10 @@ const EN: Record<string, string> = {
   "Sunucuya ulaşılamıyor — ilerleme bu cihazda birikiyor, bağlantı gelince eşitlenir":
     "Server unreachable — progress piles up on this device and syncs when the connection is back",
   "Eşitleme bekleniyor": "Waiting to sync",
+  // --- verb forms (conjugation drill) ---
+  "verleden tijd (enkelvoud)": "past tense (singular)",
+  "verleden tijd (meervoud)": "past tense (plural)",
+  "voltooid deelwoord": "past participle",
 
   // --- ana sayfa ---
   "Hollandaca alıştırma": "Dutch practice",
@@ -250,8 +254,12 @@ export function ceviri(ls: Lang[], x: { tr?: string; en?: string } | undefined |
 }
 
 /** Verb family name: the Turkish name plus (when available) the English counterpart. */
+/**
+ * Verb-family explanation for the conjugation drill: a **grammar note**, not a meaning, so it is
+ * printed in the priority language only (`ceviri` would join "TR · EN" and repeat the same note twice).
+ */
 export function aileAdi(ls: Lang[], v: { familie: string; familie_adi: string }): string {
-  return ceviri(ls, { tr: v.familie_adi, en: FAMILIE_EN[v.familie] });
+  return (ls[0] ?? "tr") === "en" ? (FAMILIE_EN[v.familie] ?? v.familie_adi) : v.familie_adi;
 }
 
 /** Hooked translation helpers for components. A language change re-renders subscribers. */

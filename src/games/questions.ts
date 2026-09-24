@@ -150,7 +150,7 @@ function verbQuestion(verb: Verb, form: VerbForm, ls: Lang[]): Question {
     id: `v:${verb.id}:${form}`,
     kind: "type",
     prompt: verb.inf,
-    promptSub: labels[form],
+    promptSub: translate(ls, labels[form]), // the label is interface text: priority language only
     speak: verb.inf,
     // Family names exist only in Turkish; for EN the sound-pattern code (15 families) is translated.
     hint: aileAdi(ls, verb),

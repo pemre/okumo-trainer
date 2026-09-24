@@ -106,7 +106,11 @@ export default function SessionGame({
             {q.subNl ? <Speak text={q.promptSub} /> : null}
           </div>
         ) : null}
-        {q.hint ? <div className="mt-3 text-xs text-inksoft">{q.hint}</div> : null}
+        {q.hint ? (
+          <div className="mt-3 text-xs text-inksoft" data-testid="hint">
+            {q.hint}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 flex flex-col gap-2" data-testid="answers">

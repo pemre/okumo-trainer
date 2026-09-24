@@ -49,6 +49,14 @@ describe("translation layer", () => {
     expect(aileAdi(["en"], fiil)).not.toContain("tipi");
   });
 
+  // A grammar note, not a meaning list: with both languages on it still prints once (priority only).
+  test("verb family: one note, in the priority language", () => {
+    const fiil = { familie: "K3_i-o-o", familie_adi: "i/e → o → o (vinden/breken tipi)" };
+    expect(aileAdi(["tr", "en"], fiil)).toBe(aileAdi(["tr"], fiil));
+    expect(aileAdi(["en", "tr"], fiil)).toBe(aileAdi(["en"], fiil));
+    expect(aileAdi(["tr", "en"], fiil)).not.toContain(" · ");
+  });
+
   test("at least one language stays on: turning off the last one is ignored", () => {
     setLangs(["tr"]);
     toggleLang("tr");

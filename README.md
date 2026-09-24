@@ -151,7 +151,7 @@ vault name is the folder name).
 | ⌨️ **Typing** | The meaning (priority language) is given, you type the Dutch. `de/het`, punctuation, case and extra whitespace are tolerated. | `w.id` |
 | 🧩 **Sentence scramble** | The sentence's **own translation** is given (`zin_tr`); shuffled Dutch word chips must be put in order (example sentences with ≥4 words). Cards without a sentence translation are skipped — the prompt must not fall back to the bare word meaning, that turned the task into a guess. | `w.id` |
 | 🔗 **Connectives** | Fill the gap in a sentence: half multiple choice, half typed. | `c:<slug>` |
-| 🔄 **Verb drilling** | Verb + requested form (past singular/plural, past participle) → you type the conjugation. The sound-pattern family is shown as a hint. | `v:<csv-row>:<form>` |
+| 🔄 **Verb drilling** | Verb + requested form (past singular/plural, past participle) → you type the conjugation. The sound-pattern family is shown as a hint — a **grammar note, so one language only** (the priority one; `aileAdi` no longer joins `TR · EN`), and the form label itself is interface text (`translate`). | `v:<csv-row>:<form>` |
 
 Ten questions per round (five pairs when matching). A round is only as long as its pool allows:
 **connectives run 9 questions** because the data holds 9 of them (every other mode reaches 10). The
@@ -390,7 +390,9 @@ and ↑ are visible in the menu.
 
 - **The priority language shows everywhere**: interface strings (`translate`), month labels, and the
   language the questions are asked in.
-- **A secondary language shows only in meaning explanations**, always listed after the priority one:
+- **Grammar notes are not meanings**: the verb-family explanation prints in the priority language only
+  (`aileAdi`) — listing both repeated the same note twice on one screen.
+- **A secondary language shows only in *meaning* explanations**, always listed after the priority one:
   deck rows (`NL — meaning`), feedback detail rows, the thin sub-line under a matching tile, and the
   question sub-line when a meaning is asked.
 - **Reordering** happens in the menu: drag the ⠿ handle (native HTML5 drag & drop, mouse) or press
@@ -486,7 +488,7 @@ services too (`yap.ev`).
 ## 8) Tests and verification
 
 ```bash
-bun test               # 75 tests / 9 files
+bun test               # 77 tests / 9 files
 bun run lint           # biome check (CI runs the same step)
 bunx tsc --noEmit      # type check
 python3 ~/.hermes/cache/scratch/okumo_mobile_check.py http://dil.ev/   # 320/375 px top bar
