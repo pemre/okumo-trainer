@@ -121,7 +121,7 @@ const DECK_GROUPS = [
 export default function App() {
   const progress = useProgress();
   const sync = useSyncState();
-  const { t, ceviri } = useT();
+  const { t, ceviri, langs } = useT();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [newItems, setNewItems] = useState<string[]>([]);
   const [deckQuery, setDeckQuery] = useState("");
@@ -462,10 +462,17 @@ export default function App() {
         ) : null}
 
         {screen.name === "game" ? (
+          // `key`: a round is built from the language selection at start (prompt, sub-line, options,
+          // hint), so changing the language mid-round remounts the game instead of leaving the card
+          // stuck in the previous language while the rest of the interface switches.
           screen.mode === "match" ? (
-            <MatchGame onFinish={(r) => finish("match", r)} />
+            <MatchGame key={langs.join("+")} onFinish={(r) => finish("match", r)} />
           ) : (
-            <SessionGame mode={screen.mode} onFinish={(r) => finish(screen.mode, r)} />
+            <SessionGame
+              key={langs.join("+")}
+              mode={screen.mode}
+              onFinish={(r) => finish(screen.mode, r)}
+            />
           )
         ) : null}
 

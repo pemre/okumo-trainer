@@ -391,7 +391,12 @@ and ↑ are visible in the menu.
 - **The priority language shows everywhere**: interface strings (`translate`), month labels, and the
   language the questions are asked in.
 - **Grammar notes are not meanings**: the verb-family explanation prints in the priority language only
-  (`aileAdi`) — listing both repeated the same note twice on one screen.
+  (`aileAdi`) — listing both repeated the same note twice on one screen. `aileAdi` reads the priority
+  language at call time, so it follows a language change like any other interface text.
+- **A round is built from the language selection at start** (prompt, sub-line, options, answer, hint),
+  so App keys the game components by `langs.join("+")`: switching the language mid-round **restarts the
+  round in the new language** instead of leaving the card stuck in the old one. Answers already given
+  stay in the SRS; only the remaining questions of that round are re-picked.
 - **A secondary language shows only in *meaning* explanations**, always listed after the priority one:
   deck rows (`NL — meaning`), feedback detail rows, the thin sub-line under a matching tile, and the
   question sub-line when a meaning is asked.

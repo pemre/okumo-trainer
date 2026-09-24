@@ -264,7 +264,9 @@ export default function SessionGame({
             ) : null}
           </dl>
           <div className="mt-3">
-            <BigButton onClick={next}>{isLast ? t("Turu bitir") : t("Devam")}</BigButton>
+            <BigButton onClick={next} testId="next">
+              {isLast ? t("Turu bitir") : t("Devam")}
+            </BigButton>
           </div>
         </div>
       ) : null}

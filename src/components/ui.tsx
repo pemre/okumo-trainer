@@ -85,11 +85,13 @@ export function BigButton({
   onClick,
   disabled,
   variant = "accent",
+  testId,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   variant?: "accent" | "soft";
+  testId?: string;
 }) {
   const styles =
     variant === "accent"
@@ -98,6 +100,7 @@ export function BigButton({
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
       disabled={disabled}
       className={`rounded-full px-6 py-3 font-semibold shadow-cozy transition-all active:scale-95 disabled:opacity-50 ${styles}`}
