@@ -17,9 +17,14 @@ describe("woorden.json", () => {
     }
   });
 
-  test("all three source notes are represented and most records have an example sentence", () => {
+  test("every source note is represented and most records have an example sentence", () => {
     const bronnen = new Set(woorden.items.map((i) => i.bron));
-    expect(bronnen.size).toBe(3);
+    // Sihirli sayı yok: her kaynak not en az bir kayıt üretmeli (4. not eklenince
+    // sabit "3" kırılıyordu).
+    for (const s of woorden.meta.sources) {
+      expect(bronnen.has(s.file.slice(0, 10))).toBe(true);
+    }
+    expect(bronnen.size).toBe(woorden.meta.sources.length);
     const withSentence = woorden.items.filter((i) => i.zin.length > 3).length;
     expect(withSentence / woorden.items.length).toBeGreaterThan(0.8);
   });
