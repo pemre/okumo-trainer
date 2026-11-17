@@ -20,7 +20,7 @@ const TALK_UP = new URL(TALK_ORIGIN);
 const TALK_PORT = TALK_UP.port || "80";
 const TALK_DIR =
   process.env.OKUMO_TALK_DIR || path.join(os.homedir(), "Downloads/github-pemre/duo-talk");
-const TALK_API = ["/api/turn", "/api/review", "/api/tts", "/api/word", "/api/info"];
+const TALK_API = ["/api/turn", "/api/review", "/api/tts", "/api/word", "/api/info", "/api/stt"];
 // A turn waits for the model and the TTS render; the timeout exists so a stalled tutor
 // answers with an error instead of leaving the browser hanging forever.
 const TALK_TIMEOUT_MS = Number(process.env.OKUMO_TALK_TIMEOUT_MS || 120000);

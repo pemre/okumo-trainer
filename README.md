@@ -503,7 +503,7 @@ live under one origin:
 | | |
 |---|---|
 | Page | `GET /konusma/` → proxied to the tutor's `index.html` |
-| API | `GET /api/info` · `POST /api/turn` · `POST /api/review` · `GET /api/tts` · `GET /api/word` → proxied to `127.0.0.1:8931` |
+| API | `GET /api/info` · `POST /api/turn` · `POST /api/review` · `GET /api/tts` · `GET /api/word` · `POST /api/stt` → proxied to `127.0.0.1:8931` |
 | Upstream | `OKUMO_TALK_ORIGIN` (default `http://127.0.0.1:8931`), `OKUMO_TALK_DIR` (default `~/Downloads/github-pemre/duo-talk`) |
 | Start | `server.mjs` probes `/api/info` on boot and spawns `python3 server.py --port 8931 --host 127.0.0.1` (detached) when nothing answers |
 | Down | API answers 503 JSON, `/konusma/` answers a small page with the start command — never a hang |
