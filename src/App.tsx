@@ -125,6 +125,9 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [newItems, setNewItems] = useState<string[]>([]);
   const [deckQuery, setDeckQuery] = useState("");
+  // Conversation practice is local-only: the card appears when duo-talk answers, so the
+  // static Pages build (no /api) simply never shows it.
+  const [talk, setTalk] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const sourcesDialog = useRef<HTMLDialogElement>(null);
   const newItemsDialog = useRef<HTMLDialogElement>(null);
@@ -132,6 +135,25 @@ export default function App() {
 
   // Sync with the server on load and whenever the connection comes back (falls back to local).
   useEffect(() => startSync(), []);
+  useEffect(() => {
+    // The tutor server may still be booting (it is spawned together with this one), so retry a
+    // few times before concluding the module is unavailable.
+    const ctrl = new AbortController();
+    let attempt = 0;
+    const probe = () => {
+      fetch("/api/info", { signal: ctrl.signal })
+        .then((r) => {
+          if (r.ok) setTalk(true);
+          else throw new Error(String(r.status));
+        })
+        .catch(() => {
+          attempt += 1;
+          if (attempt < 4 && !ctrl.signal.aborted) setTimeout(probe, 1200 * attempt);
+        });
+    };
+    probe();
+    return () => ctrl.abort();
+  }, []);
 
   // Menus, cards and popup buttons get the yap.ev key click from one delegated listener.
   // The answer area is excluded: there the same press already plays its own verdict tone in
@@ -271,6 +293,29 @@ export default function App() {
             <ActivityHeat daily={progress.daily} />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {talk ? (
+                <CozyCard
+                  as="button"
+                  onClick={() => window.open("/konusma/", "_blank", "noopener")}
+                  className="flex flex-col gap-2"
+                  data-testid="talk"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl" aria-hidden="true">
+                      🎙️
+                    </span>
+                    <span className="font-display text-lg font-semibold">
+                      {t("Konuşma pratiği")}
+                    </span>
+                    <span className="ml-auto rounded-full bg-accentsoft px-2 py-0.5 text-xs font-semibold text-accent">
+                      {t("canlı")}
+                    </span>
+                  </div>
+                  <p className="text-sm text-inksoft">
+                    {t("Fenna ile sesli sohbet: A2/B1, anında düzeltme, sonunda review.")}
+                  </p>
+                </CozyCard>
+              ) : null}
               {MODES.map((mode) => (
                 <CozyCard
                   key={mode.id}

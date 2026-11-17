@@ -1,8 +1,10 @@
 // Serves the built app locally plus a small JSON store for progress syncing.
 // Started by SwiftBar; dil.ev reaches it through Traefik. No dependencies.
+import { spawn } from "node:child_process";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import os from "node:os";
 import path from "node:path";
 
 const PORT = Number(process.env.OKUMO_PORT || 8911);
@@ -10,6 +12,87 @@ const ROOT = path.join(import.meta.dir, "dist");
 const DATA_DIR = path.join(import.meta.dir, "data");
 const PROGRESS_FILE = path.join(DATA_DIR, "progress.json");
 const MAX_BODY = 512 * 1024; // the progress file is a few KB; anything above that is suspicious
+
+// Conversation practice (duo-talk: Dutch tutor with speech in/out) runs as a separate Python
+// server; this process only proxies it under the same origin so one address serves both.
+const TALK_ORIGIN = process.env.OKUMO_TALK_ORIGIN || "http://127.0.0.1:8931";
+const TALK_UP = new URL(TALK_ORIGIN);
+const TALK_PORT = TALK_UP.port || "80";
+const TALK_DIR =
+  process.env.OKUMO_TALK_DIR || path.join(os.homedir(), "Downloads/github-pemre/duo-talk");
+const TALK_API = ["/api/turn", "/api/review", "/api/tts", "/api/word", "/api/info"];
+// A turn waits for the model and the TTS render; the timeout exists so a stalled tutor
+// answers with an error instead of leaving the browser hanging forever.
+const TALK_TIMEOUT_MS = Number(process.env.OKUMO_TALK_TIMEOUT_MS || 120000);
+
+const isTalkApi = (pathname) => TALK_API.includes(pathname);
+
+const TALK_DOWN_PAGE = `<!doctype html><meta charset="utf-8">
+<body style="font:16px/1.5 -apple-system,sans-serif;padding:2rem;max-width:34rem;margin:auto">
+<h1>Konuşma sunucusu kapalı</h1>
+<p>duo-talk başlamamış. Elle başlatmak için:</p>
+<pre style="background:#eee;padding:.75rem;border-radius:8px;overflow:auto">cd ${TALK_DIR}
+python3 server.py --port ${TALK_PORT} --host 127.0.0.1</pre>
+<p>Ya da okumo sunucusunu yeniden başlat: <code>bash ~/Downloads/github-pemre/swiftbar-plugins/modules/okumo-trainer.30s.sh restart</code></p>
+</body>`;
+
+/** Reverse-proxy one request to the duo-talk server. Never hangs, never double-writes headers. */
+function proxyToTalk(req, res, targetPath) {
+  const out = httpRequest(
+    {
+      hostname: TALK_UP.hostname,
+      port: TALK_UP.port,
+      path: targetPath,
+      method: req.method,
+      // hop-by-hop headers (connection, transfer-encoding, upgrade…) are not forwarded
+      headers: {
+        accept: req.headers.accept ?? "*/*",
+        "content-type": req.headers["content-type"] ?? "application/json",
+        ...(req.headers["content-length"]
+          ? { "content-length": req.headers["content-length"] }
+          : {}),
+      },
+    },
+    (up) => {
+      const headers = { "content-type": up.headers["content-type"] ?? "application/octet-stream" };
+      if (up.headers["content-length"]) headers["content-length"] = up.headers["content-length"];
+      res.writeHead(up.statusCode ?? 502, headers);
+      up.pipe(res);
+    },
+  );
+  out.setTimeout(TALK_TIMEOUT_MS, () => out.destroy(new Error("upstream timeout")));
+  out.on("error", (e) => {
+    if (res.headersSent) {
+      res.destroy(); // the body was already streaming; there is nothing left to explain
+      return;
+    }
+    if (isTalkApi(new URL(req.url ?? "/", "http://x").pathname)) {
+      sendJson(res, 503, { error: `duo-talk yanıt vermiyor (${TALK_ORIGIN}): ${e.message}` });
+    } else {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(TALK_DOWN_PAGE);
+    }
+  });
+  req.on("aborted", () => out.destroy());
+  req.pipe(out);
+}
+
+// Start the tutor server with the app, unless it is already answering.
+function ensureTalkServer() {
+  const probe = httpRequest(`${TALK_ORIGIN}/api/info`, { method: "GET" }, (r) => r.resume());
+  probe.setTimeout(1500, () => probe.destroy(new Error("probe timeout")));
+  probe.on("error", () => {
+    const child = spawn(
+      process.env.OKUMO_PYTHON || "python3",
+      ["server.py", "--port", TALK_PORT, "--host", "127.0.0.1"],
+      { cwd: TALK_DIR, stdio: "ignore", detached: true },
+    );
+    child.on("spawn", () => console.log(`duo-talk başlatıldı (${TALK_DIR}, port ${TALK_PORT})`));
+    child.on("error", (e) => console.warn(`duo-talk başlatılamadı (${TALK_DIR}): ${e.message}`));
+    child.unref();
+  });
+  probe.end();
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -92,6 +175,19 @@ createServer(async (req, res) => {
     await handleProgress(req, res);
     return;
   }
+  if (isTalkApi(url.pathname)) {
+    proxyToTalk(req, res, url.pathname + url.search);
+    return;
+  }
+  if (url.pathname === "/konusma" || url.pathname === "/konusma/") {
+    proxyToTalk(req, res, "/index.html");
+    return;
+  }
+  if (url.pathname.startsWith("/konusma/")) {
+    // relative assets of the tutor page must not fall through to the SPA fallback
+    proxyToTalk(req, res, url.pathname.slice("/konusma".length) + url.search);
+    return;
+  }
   if (url.pathname === "/health") {
     sendJson(res, 200, {
       status: "ok",
@@ -119,4 +215,5 @@ createServer(async (req, res) => {
   createReadStream(file).pipe(res);
 }).listen(PORT, "0.0.0.0", () => {
   console.log(`okumo-trainer http://127.0.0.1:${PORT} (dist: ${ROOT}, data: ${DATA_DIR})`);
+  ensureTalkServer();
 });

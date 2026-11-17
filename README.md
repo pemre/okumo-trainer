@@ -484,7 +484,7 @@ when the browser has no speech synthesis.
 | Port | `8911` (`OKUMO_PORT` overrides), `0.0.0.0` — reachable from the LAN |
 | URL | `http://dil.ev/` — Pi-hole DNS record (`dns.hosts`: `192.168.1.200 dil.ev`) + Traefik file-provider router `okumo-trainer` → `http://192.168.1.30:8911` |
 | Served | `dist/` only (SPA fallback index.html). Paths escaping `dist` are rejected (`%2e%2e%2f` included) |
-| Endpoints | `GET /health` · `GET|PUT /api/progress` |
+| Endpoints | `GET /health` · `GET|PUT /api/progress` · `GET /api/info` · `POST /api/turn|review` · `GET /api/tts|word` (proxied to duo-talk, see 7b) |
 | Started by | `server.mjs` (dependency-free `node:http`); the SwiftBar plugin locally, launchd if preferred |
 | State file | `data/progress.json` (+ `.tmp` atomic write) — **not in git** |
 | Logs | `/tmp/okumo-trainer-server.log`, `/tmp/okumo-trainer-import.log`, `/tmp/okumo-trainer-swiftbar.log` |
@@ -492,6 +492,31 @@ when the browser has no speech synthesis.
 Stopping the server uses the **PID holding the port** (`lsof -nP -iTCP:8911 -sTCP:LISTEN -t`); it
 never touches another process. If the network side (DNS + Traefik) changes, verify the neighbouring
 services too (`yap.ev`).
+
+### 7b) Conversation practice (duo-talk)
+
+A second, **local-only** module: a Dutch voice chat with "Fenna" (speech in, speech out, per-turn
+corrections with the rule behind them, end-of-session review). It is a separate Python server
+(`~/Downloads/github-pemre/duo-talk`, stdlib only) and `server.mjs` only reverse-proxies it, so both
+live under one origin:
+
+| | |
+|---|---|
+| Page | `GET /konusma/` → proxied to the tutor's `index.html` |
+| API | `GET /api/info` · `POST /api/turn` · `POST /api/review` · `GET /api/tts` · `GET /api/word` → proxied to `127.0.0.1:8931` |
+| Upstream | `OKUMO_TALK_ORIGIN` (default `http://127.0.0.1:8931`), `OKUMO_TALK_DIR` (default `~/Downloads/github-pemre/duo-talk`) |
+| Start | `server.mjs` probes `/api/info` on boot and spawns `python3 server.py --port 8931 --host 127.0.0.1` (detached) when nothing answers |
+| Down | API answers 503 JSON, `/konusma/` answers a small page with the start command — never a hang |
+| Home card | `data-testid="talk"` is rendered **only when `/api/info` answers**, so the static Pages build hides it instead of offering a dead link |
+
+**Microphone caveat:** speech recognition needs a secure context. `http://localhost` and
+`http://127.0.0.1` qualify, `http://dil.ev` does **not** — from the LAN use the page's **Yazma**
+(typing) mode, or add `http://dil.ev` to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+on the device. Text-to-speech (server-side edge-tts) works everywhere.
+
+Verification: `curl -s http://127.0.0.1:8911/api/info` and `curl -s -o /dev/null -w "%{http_code}"
+http://127.0.0.1:8911/konusma/` (both 200), then in the browser open the home card, send one turn in
+typing mode and click a word — the tooltip must show EN and TR glosses.
 
 ---
 

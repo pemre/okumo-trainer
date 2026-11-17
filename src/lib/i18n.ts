@@ -42,6 +42,10 @@ export const FAMILIE_EN: Record<string, string> = {
 const EN: Record<string, string> = {
   // --- top bar / menu ---
   "Ana sayfa": "Home",
+  "Konuşma pratiği": "Speaking practice",
+  canlı: "live",
+  "Fenna ile sesli sohbet: A2/B1, anında düzeltme, sonunda review.":
+    "Voice chat with Fenna: A2/B1, instant corrections, review at the end.",
   "Arayüz dilleri": "Interface languages",
   "Öncelikli dil her yerde, diğeri yalnız anlam açıklamalarında görünür. En az bir dil açık kalır.":
     "The priority language shows everywhere; the other only in meaning descriptions. At least one language stays on.",
