@@ -486,6 +486,7 @@ when the browser has no speech synthesis.
 | Served | `dist/` only (SPA fallback index.html). Paths escaping `dist` are rejected (`%2e%2e%2f` included) |
 | Endpoints | `GET /health` · `GET|PUT /api/progress` · `GET /api/info` · `POST /api/turn|review` · `GET /api/tts|word` (proxied to duo-talk, see 7b) |
 | Started by | `server.mjs` (dependency-free `node:http`); the SwiftBar plugin locally, launchd if preferred |
+| HTTPS twin | Same handler on `8944` (`OKUMO_TLS_PORT`) with the self-signed cert in `data/tls/{cert,key}.pem` (`OKUMO_TLS_CERT/KEY`, gitignored, generated with SANs for `dil.ev`, `192.168.1.30`, `localhost`). Exists for one reason: the microphone needs a secure context and plain-HTTP `dil.ev` is not one. `dil.ev` still resolves to the NUC, so the usable address is `https://192.168.1.30:8944/` (browser warns once — self-signed). |
 | State file | `data/progress.json` (+ `.tmp` atomic write) — **not in git** |
 | Logs | `/tmp/okumo-trainer-server.log`, `/tmp/okumo-trainer-import.log`, `/tmp/okumo-trainer-swiftbar.log` |
 

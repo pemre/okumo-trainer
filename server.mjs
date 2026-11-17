@@ -168,7 +168,7 @@ async function handleProgress(req, res) {
   sendJson(res, 405, { error: "method not allowed" });
 }
 
-createServer(async (req, res) => {
+async function handle(req, res) {
   const url = new URL(req.url ?? "/", "http://localhost");
 
   if (url.pathname === "/api/progress") {
@@ -213,7 +213,27 @@ createServer(async (req, res) => {
   }
   res.writeHead(200, { "content-type": MIME[path.extname(file)] ?? "application/octet-stream" });
   createReadStream(file).pipe(res);
-}).listen(PORT, "0.0.0.0", () => {
+}
+
+createServer(handle).listen(PORT, "0.0.0.0", () => {
   console.log(`okumo-trainer http://127.0.0.1:${PORT} (dist: ${ROOT}, data: ${DATA_DIR})`);
   ensureTalkServer();
 });
+
+// Optional HTTPS twin: the microphone needs a secure context, and a LAN hostname over plain
+// HTTP is not one. Self-signed, so the browser asks once (data/tls is gitignored).
+const TLS_PORT = Number(process.env.OKUMO_TLS_PORT || 8944);
+const TLS_CERT = process.env.OKUMO_TLS_CERT || path.join(DATA_DIR, "tls/cert.pem");
+const TLS_KEY = process.env.OKUMO_TLS_KEY || path.join(DATA_DIR, "tls/key.pem");
+if (existsSync(TLS_CERT) && existsSync(TLS_KEY)) {
+  try {
+    const { readFileSync } = await import("node:fs");
+    createServer({ cert: readFileSync(TLS_CERT), key: readFileSync(TLS_KEY) }, handle).listen(
+      TLS_PORT,
+      "0.0.0.0",
+      () => console.log(`okumo-trainer https://<lan-ip>:${TLS_PORT} (self-signed)`),
+    );
+  } catch (e) {
+    console.warn(`https listener kapalı: ${e.message}`);
+  }
+}
